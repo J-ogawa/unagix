@@ -1,0 +1,67 @@
+/* some style */
+.field {
+  height: 600px;
+}
+
+.side {
+  float: left;
+  width: 100px;
+  height: 610px;
+  position: relative;
+  background-color: yellowgreen;
+}
+
+.ban {
+  float: left;
+  width: 526px;
+  height: 610px;
+  background-color: orange;
+}
+
+.masu-row {
+  float: right;
+}
+
+.masu {
+  top: 10px;
+  right: 20px;
+  width:  50px;
+  height:  62px;
+  border: 2px solid black;
+  position: relative;
+}
+
+.highlight {
+  background-color: red;
+}
+
+.koma {
+  width: 50px;
+  height: 62px;
+  position: relative;
+}
+
+.koma-white {
+  -webkitTransform: rotate(0deg);
+  -moz-transform: rotate(0deg);
+}
+
+.koma-black {
+  -webkit-transform: rotate(180deg);
+  -moz-transform: rotate(180deg);
+}
+
+.komadai {
+  width: 100px;
+  height: 480px;
+  background-color: orange;
+  position: absolute;
+}
+
+#komadai-white {
+  bottom: 0px;
+}
+
+#komadai-black {
+  top: 0px;
+}
