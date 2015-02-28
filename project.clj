@@ -13,6 +13,7 @@
                  [ring/ring-defaults "0.1.2"]
                  [ring/ring-jetty-adapter "1.3.2"]
                  [compojure "1.1.8"]
+                 [environ "0.5.0"]
                  [om "0.7.1"]]
 
   :aot [unagix.clj.web]
@@ -20,7 +21,9 @@
   :ring {:handler unagix.clj.web/app}
 
   :plugins [[lein-cljsbuild "1.0.3"]
-            [lein-figwheel "0.1.4-SNAPSHOT"]]
+            [lein-figwheel "0.1.4-SNAPSHOT"]
+            [environ/environ.lein "0.2.1"]]
+  :hooks [environ.leiningen.hooks]
 
   :source-paths ["src"]
 
