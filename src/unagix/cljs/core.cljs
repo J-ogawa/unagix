@@ -1,7 +1,7 @@
 (ns unagix.core
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
-;    [figwheel.client :as fw]
+    [figwheel.client :as fw]
     [om.core :as om :include-macros true]
     [om.dom :as dom :include-macros true]
     [cljs.core.async :refer [put! chan <!]]
@@ -399,5 +399,4 @@
   app-state
   {:target (. js/document (getElementById "app"))})
 
-;(fw/watch-and-reload)
-
+(fw/watch-and-reload)

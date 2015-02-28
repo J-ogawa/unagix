@@ -1,2 +1,3 @@
-web: java -jar target/unagix-0.1.0-SNAPSHOT-standalone.jar
+web: lein with-profile production do cljsbuild once, compile :all
+web: java $JVM_OPTS -cp target/unagix-clojure-standalone.jar clojure.main -m unagix-clojure-started.web
 
