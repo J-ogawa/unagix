@@ -23,7 +23,6 @@
   :plugins [[lein-cljsbuild "1.0.3"]
             [lein-figwheel "0.1.4-SNAPSHOT"]
             [environ/environ.lein "0.2.1"]]
-  :hooks [environ.leiningen.hooks]
 
   :source-paths ["src"]
 
