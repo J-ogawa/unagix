@@ -15,6 +15,7 @@
                  [compojure "1.1.8"]
                  [om "0.7.1"]]
 
+  :aot [unagix.clj.web]
   :main unagix.clj.web
   :ring {:handler unagix.clj.web/app}
 
@@ -43,4 +44,4 @@
              :css-dirs ["public/resources/css"] ;; watch and update CSS
              ;; :ring-handler testfig.server/handler
              }
-  :uberjar-name "unagix-clojure-standalone.jar")
+  :uberjar-name "unagix-standalone.jar")
