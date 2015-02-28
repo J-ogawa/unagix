@@ -44,4 +44,5 @@
              :css-dirs ["public/resources/css"] ;; watch and update CSS
              ;; :ring-handler testfig.server/handler
              }
-  :uberjar-name "unagix-standalone.jar")
+  :uberjar-name "unagix-standalone.jar"
+  :profiles {:production {:env {:production true}}})
