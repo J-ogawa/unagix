@@ -1,5 +1,6 @@
 (ns unagix.clj.web
   (:gen-class)
+  (:use unagix.clj.views)
   (:require [compojure.core :refer :all]
             [compojure.route :as route]
             [ring.adapter.jetty :as jetty]
@@ -10,9 +11,11 @@
   (GET "/" []
        (println "root")
        "root")
-  (GET "/:id" [id]
+  (GET "/sss/:id" [id]
        (println id)
        id)
+  (GET "/shogi" [id]
+       (index-page))
   (route/not-found "Not Found"))
 
 (def app

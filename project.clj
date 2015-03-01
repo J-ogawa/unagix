@@ -14,6 +14,7 @@
                  [ring/ring-jetty-adapter "1.3.2"]
                  [compojure "1.1.8"]
                  [environ "0.5.0"]
+                 [hiccup "1.0.5"]
                  [om "0.7.1"]]
 
   :aot [unagix.clj.web]
