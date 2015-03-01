@@ -4,7 +4,7 @@
     [figwheel.client :as fw]
     [om.core :as om :include-macros true]
     [om.dom :as dom :include-macros true]
-    [cljs.core.async :refer [put! chan <!]]
+    [cljs.core.async :refer [timeout put! chan <!]]
     [clojure.data :as data]
     [clojure.string :as string]))
 
@@ -41,8 +41,9 @@
 (defonce app-state
   (atom
     {:field (field-data koma-mapping)
-     :stock {:black {:hu 5 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0}
-             :white {:hu 5 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0} }
+     :stock {:black {} :white {}}
+;     :stock {:black {:hu 5 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0}
+;             :white {:hu 5 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0} }
      :turn :white}))
 
 
@@ -189,9 +190,23 @@
 
 ; --- user action ---
 
+(def input-chan
+  (chan))
+
 (defn on-masu-click [data owner]
+
+
+;  (let [ch (chan)]
+;    (go
+;      (while true
+;        (let [v (<! ch)]
+;          (println "Read: " v))))
+;    (go
+;      (>! ch 1)))
+
   (cond
-    (:highlight @data) (next! (conj (:selected @app-state) {:dst @data}))
+    ;(:highlight @data) (next! (conj (:selected @app-state) {:dst @data}))
+    (:highlight @data) (put! input-chan (conj (:selected @app-state) {:dst @data}))
     (and ((complement nil?) (-> @data :koma))
          (= (-> @data :koma :owner) (:turn @app-state))) (select! {:type :move :src @data})
     :else (neutral!)))
@@ -200,16 +215,63 @@
   (select! {:type :put :koma-type data}))
 
 
-; --- process game ---
+; --- game process ---
+
+(defn main []
+  (go
+    (while true
+      (let [turn (<! input-chan)]                ;;R: 入力を待つ
+    (println "===")
+    (println turn)
+        (next! turn))
+  ;    (if (= (:turn @app-state) :black)
+  ;      (!> input-chan (best-choice @app-state)))
+      )))                             ;;L: 再)
+
+(defn com []
+  (go
+    (loop []
+      (<! (timeout 1000))
+      (println "---")
+      (if (= (:turn @app-state) :black)
+        (if-not (= (:com-thinking @app-state) true)
+          ((swap! app-state assoc :com-thinking true)
+          (put! input-chan (first (best-choice @app-state)))
+          (swap! app-state assoc :com-thinking false))))
+      (recur))))
+
+(main)
+(com)
 
 (defn next! [turn]
   (swap! app-state conj (turned-state @app-state turn))
   (neutral!)
-  (if (= (:turn @app-state) :black)
-   (let [_best-choice (best-choice @app-state)]
-     (println " ")
-     (println @aaa)
-   (next! (first _best-choice)))))
+
+;
+;(go
+;  (loop
+;  (if (= (:turn @app-state) :black)
+;   (let [_best-choice (<! (best-choice @app-state))]
+;     (println " ")
+;     (println @aaa)
+;   (next! (first _best-choice))))
+;  ))
+
+;  (if (= (:turn @app-state) :black)
+;  (let [ch (chan)]
+;    (go
+;      (while true
+;        (println "1111")
+;        (let [_best-choice (<! ch)]
+;          (next! (first _best-choice)))))
+;    (go
+;        (println "2222")
+;      (println "send 1")
+;      (>! ch (best-choice @app-state))
+;        ))) ; [1]
+
+
+  )
 
 (defn neutral! [_]
   (swap! app-state assoc :field (update-values (:field @app-state) #(dissoc % :highlight))))
@@ -305,8 +367,9 @@
          :else                                         (recur app-state (rest targets) candity-tree candity))))))
 
 (defn score [app-state]
-  (+ (move-range-score app-state)
-     (field-unit-score app-state)))
+;  (+ (move-range-score app-state)
+;     (field-unit-score app-state)))
+   (field-unit-score app-state))
 
 (defn move-range-score [app-state]
   (- (count (choices app-state :white)) (count (choices app-state :black))))
@@ -361,10 +424,12 @@
     om/IRender
     (render [self]
       (dom/div #js {}
-               (dom/img #js {:src (str "img/" (name (:koma-type app)) ".png")
-                             :className (str "koma-" (name (:role app)))
-                             :onClick #(on-stock-koma-click (:koma-type app) owner)})
-               (:amount app)))))
+               (when (> (:amount app) 0)
+                 (dom/img #js {:src (str "img/" (name (:koma-type app)) ".png")
+                               :className (str "koma-" (name (:role app)))
+                               :onClick #(on-stock-koma-click (:koma-type app) owner)}))
+               (when (> (:amount app) 1)
+                 (:amount app))))))
 
 (defn komadai [player owner]
   (reify
@@ -392,7 +457,9 @@
       (dom/div #js {:className "field"}
                (om/build side {:role :black :stock (-> app :stock :black)})
                (om/build center (:field app))
-               (om/build side {:role :white :stock (-> app :stock :white)})))))
+               (om/build side {:role :white :stock (-> app :stock :white)})
+               (if (= (:turn @app-state) :black)
+                 "thinking...")))))
 
 (om/root
   container
