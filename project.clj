@@ -15,6 +15,7 @@
                  [compojure "1.1.8"]
                  [environ "0.5.0"]
                  [hiccup "1.0.5"]
+                 [servant "0.1.4"]
                  [om "0.7.1"]]
 
   :aot [unagix.clj.web]

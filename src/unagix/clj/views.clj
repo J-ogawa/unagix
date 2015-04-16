@@ -12,4 +12,4 @@
     [:body
      [:div#main-area
       [:div#app]]
-     [:script {:type "text/javascript"} "goog.require(\"unagix.core\");"]]))
+     [:script {:type "text/javascript"} "goog.require(\"unagix.cljs.core\");"]]))

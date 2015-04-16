@@ -1,15 +1,17 @@
-(ns unagix.core
-  (:require-macros [cljs.core.async.macros :refer [go]])
+(ns unagix.cljs.core
   (:require
     [figwheel.client :as fw]
     [om.core :as om :include-macros true]
     [om.dom :as dom :include-macros true]
     [cljs.core.async :refer [timeout put! chan <!]]
+    [servant.core :as servant]
+    [servant.worker :as worker]
     [clojure.data :as data]
-    [clojure.string :as string]))
+    [clojure.string :as string])
+  (:require-macros [cljs.core.async.macros :refer [go]]
+                   [servant.macros :refer [defservantfn]]))
 
 (enable-console-print!)
-
 
 ; --- init ---
 
@@ -236,17 +238,42 @@
       (if (= (:turn @app-state) :black)
         (if-not (= (:com-thinking @app-state) true)
           ((swap! app-state assoc :com-thinking true)
-          (put! input-chan (first (best-choice @app-state)))
-          (swap! app-state assoc :com-thinking false))))
+           (let [_turn (<! channel-1)]
+             (println "---- com turn !!! ----")
+             (next! (first _turn)))
+           ;      (put! input-chan (first (best-choice @app-state)))
+           (swap! app-state assoc :com-thinking false))))
       (recur))))
 
 (main)
 (com)
 
+(def worker-count 2)
+;(def worker-script  "js/compiled/out/unagix/core.js")
+;(def worker-script "js/compiled/out/unagix/cljs/core.js")
+(def worker-script "js/compiled/unagix.js")
+
+(defservantfn best-com-choice [state]
+  (best-choice state))
+
+(def servant-channel1 (servant/spawn-servants worker-count worker-script))
+
+(def channel-1 (servant/servant-thread servant-channel1 servant/standard-message best-com-choice @app-state))
+
+(if (servant/webworker?)
+    (worker/bootstrap)
+    (set! (.-onload js/window) window-load))
+
 (defn next! [turn]
   (swap! app-state conj (turned-state @app-state turn))
   (neutral!)
 
+  (go
+    (loop []
+           (let [_turn (<! channel-1)]
+             (println "---- com turn !!! ----")
+             (next! (first _turn)))
+      (recur)))
 ;
 ;(go
 ;  (loop
