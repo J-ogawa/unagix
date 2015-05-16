@@ -26,6 +26,12 @@
    [ nil  "+hi"  nil   nil   nil   nil   nil  "+ka"  nil ]
    ["+ky" "+ke" "+gi" "+ki" "+gy" "+ki" "+gi" "+ke" "+ky"]])
 
+(def field-size
+  {:x 9 :y 9})
+
+(def enemy-line
+  3)
+
 (defn koma [daf-koma-mapping x y]
   (if-let [_str (get (get def-koma-mapping y) x)]
     {:type (keyword (string/join (rest _str)))
@@ -43,9 +49,7 @@
 (defonce app-state
   (atom
     {:field (field-data koma-mapping)
-     :stock {:black {} :white {}}
-     ;     :stock {:black {:hu 5 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0}
-     ;             :white {:hu 5 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0} }
+     :stock {:black {} :white {}} ; {:hu 1 :ky 1}
      :turn :white}))
 
 
@@ -60,25 +64,46 @@
    :ka  {:long  [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]}
    :hi  {:long  [[-1  0] [ 0 -1] [ 0  1] [ 1  0]]}
    :gy  {:short [[-1 -1] [-1  0] [-1  1] [ 0 -1] [ 0  1] [ 1 -1] [ 1  0] [ 1  1]]}
-   :nhu (get basic-type-vec "ki")
-   :nky (get basic-type-vec "ki")
-   :nke (get basic-type-vec "ki")
-   :ngi (get basic-type-vec "ki")
-   :nka (conj (get basic-type-vec "ka" ) {:short [[ 0 -1] [ 0  1] [-1  0] [ 1  0]]})
-   :nhi (conj (get basic-type-vec "hi" ) {:short [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]})})
+   :nhu (get basic-type-vec :ki)
+   :nky (get basic-type-vec :ki)
+   :nke (get basic-type-vec :ki)
+   :ngi (get basic-type-vec :ki)
+   :nka (conj (get basic-type-vec :ka ) {:short [[ 0 -1] [ 0  1] [-1  0] [ 1  0]]})
+   :nhi (conj (get basic-type-vec :hi ) {:short [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]})})
+
+(defn promotable? [_type]
+  (= -1 (.indexOf (str _type) "n")))
+
+(defn enemy-area? [y player]
+  (if (= :white player)
+    (< y enemy-line)
+    (> y (- (:y field-size) enemy-line 1))))
+
+(defn promoted [_type]
+  (keyword (string/join ["n" (subs (str _type) 1)])))
+
+(defn promote-unless-selected-movable! [dst]
+  (let [selected (:selected @app-state)
+        _type    (-> selected :src :koma :type)]
+    (if
+      (some #(= _type %) [:hu :ky :ke])
+      (let [y-move (* (last (direction (-> selected :src :koma :owner)))
+                    (-> basic-type-vec _type vals first first last))]
+        (if-not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
+          (promote-selected-koma!))))))
+
+(defn field-contains? [coordinate]
+  (and
+    (>= (:x coordinate) 0)
+    (<  (:x coordinate) (:x field-size))
+    (>= (:y coordinate) 0)
+    (<  (:y coordinate) (:y field-size))))
+
+(def direction
+  {:white [1 1] :black [1 -1]})
 
 (defn xy [masu]
   (str (:x masu) (:y masu)))
-
-(defn all-moves [app-state player]
-  (let [turn-masus (filter
-                     #(and ((complement nil?) (:koma %))
-                           (= (-> % :koma :owner) player))
-                     (map second (:field app-state)))]
-    (flatten (map (fn[src] (map
-                             (fn[dst] {:type :move :src src :dst dst})
-                             (reach-masus (:field app-state) src)))
-                  turn-masus))))
 
 (defn check-dst [turn dst]
   (cond
@@ -195,10 +220,29 @@
 (def input-chan
   (chan))
 
+(defn promote-selected-koma! [_]
+  (println "promote!")
+  (swap! app-state assoc-in [:selected :src :koma :type] (promoted (-> @app-state :selected :src :koma :type))))
+
+(defn operate-next [dst]
+     (promote-unless-selected-movable! dst)
+     (let [selected (-> @app-state :selected)
+           selected-koma (-> selected :src :koma)]
+       (if
+         (and
+           (= :move (-> selected :type))
+           (enemy-area? (:y dst) (-> selected-koma :owner))
+           (promotable? (-> selected-koma :type))
+           (js/confirm "promote?"))
+         (promote-selected-koma!)))
+
+     (put! input-chan (conj (:selected @app-state) {:dst dst})))
+
 (defn on-masu-click [data owner]
+  (println (-> @app-state :selected))
+  (println @data)
   (cond
-    ;(:highlight @data) (next! (conj (:selected @app-state) {:dst @data}))
-    (:highlight @data) (put! input-chan (conj (:selected @app-state) {:dst @data}))
+    (:highlight @data) (operate-next @data)
     (and ((complement nil?) (-> @data :koma))
          (= (-> @data :koma :owner) (:turn @app-state))) (select! {:type :move :src @data})
     :else (neutral!)))
@@ -213,8 +257,6 @@
   (go
     (while true
       (let [turn (<! input-chan)]                ;;R: 入力を待つ
-        (println "===")
-        (println turn)
         (next! turn))
       ;    (if (= (:turn @app-state) :black)
       ;      (!> input-chan (best-choice @app-state)))
@@ -318,9 +360,7 @@
       (dom/div #js {:className "field"}
                (om/build side {:role :black :stock (-> app :stock :black)})
                (om/build center (:field app))
-               (om/build side {:role :white :stock (-> app :stock :white)})
-               (if (= (:turn @app-state) :black)
-                 "thinking...")))))
+               (om/build side {:role :white :stock (-> app :stock :white)})))))
 
 (om/root
   container
