@@ -30,8 +30,8 @@
 (def enemy-line
   3)
 
-(defn koma [daf-koma-mapping x y]
-  (if-let [_str (get (get def-koma-mapping y) x)]
+(defn koma [mapping x y]
+  (if-let [_str (get (get mapping y) x)]
     {:type (keyword (string/join (rest _str)))
      :owner (if (= "+" (first _str))
               :white
@@ -46,7 +46,7 @@
 
 (defonce app-state
   (atom
-    {:field (field-data koma-mapping)
+    {:field (field-data def-koma-mapping)
      :stock {:black {} :white {}} ; {:hu 1 :ky 1}
      :turn :white}))
 
@@ -66,8 +66,8 @@
    :nky (get basic-type-vec :ki)
    :nke (get basic-type-vec :ki)
    :ngi (get basic-type-vec :ki)
-   :nka (conj (get basic-type-vec :ka ) {:short [[ 0 -1] [ 0  1] [-1  0] [ 1  0]]})
-   :nhi (conj (get basic-type-vec :hi ) {:short [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]})})
+   :nka (conj (get basic-type-vec :ka) {:short [[ 0 -1] [ 0  1] [-1  0] [ 1  0]]})
+   :nhi (conj (get basic-type-vec :hi) {:short [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]})})
 
 (defn promotable? [_type]
   (= -1 (.indexOf (str _type) "n")))
@@ -80,6 +80,19 @@
 (defn promoted [_type]
   (keyword (string/join ["n" (subs (str _type) 1)])))
 
+(def direction
+  {:white [1 1] :black [1 -1]})
+
+(defn field-contains? [coordinate]
+  (and
+    (>= (:x coordinate) 0)
+    (<  (:x coordinate) (:x field-size))
+    (>= (:y coordinate) 0)
+    (<  (:y coordinate) (:y field-size))))
+
+(defn promote-selected-koma! []
+  (swap! app-state assoc-in [:selected :src :koma :type] (promoted (-> @app-state :selected :src :koma :type))))
+
 (defn promote-unless-selected-movable! [dst]
   (let [selected (:selected @app-state)
         _type    (-> selected :src :koma :type)]
@@ -89,16 +102,6 @@
                     (-> basic-type-vec _type vals first first last))]
         (if-not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
           (promote-selected-koma!))))))
-
-(defn field-contains? [coordinate]
-  (and
-    (>= (:x coordinate) 0)
-    (<  (:x coordinate) (:x field-size))
-    (>= (:y coordinate) 0)
-    (<  (:y coordinate) (:y field-size))))
-
-(def direction
-  {:white [1 1] :black [1 -1]})
 
 (defn xy [masu]
   (str (:x masu) (:y masu)))
@@ -146,16 +149,6 @@
 
 ; --- put ---
 
-(defn putable-masus [field koma-type owner]
-  (let [empty-cond      #(nil? (:koma %))
-        unbackable-cond (unbackable-cond koma-type owner)
-        conditions (cond
-                     (= koma-type :hu)      [empty-cond unbackable-cond (non-nihu-cond field owner)]
-                     (or (= koma-type :ky)
-                         (= koma-type :ke)) [empty-cond unbackable-cond]
-                     :else                  [empty-cond])]
-    (reduce #(filter %2 %1) (map second field) conditions)))
-
 (defn unbackable-cond [koma-type owner]
   (let [scalar (cond
                  (= koma-type :hu) 1
@@ -176,13 +169,27 @@
 (defn non-nihu-cond [field owner]
   #(nil? (some #{(:x %)} (exist-hu-y-lines field owner))))
 
+(defn putable-masus [field koma-type owner]
+  (let [empty-cond      #(nil? (:koma %))
+        unbackable-cond (unbackable-cond koma-type owner)
+        conditions (cond
+                     (= koma-type :hu)      [empty-cond unbackable-cond (non-nihu-cond field owner)]
+                     (or (= koma-type :ky)
+                         (= koma-type :ke)) [empty-cond unbackable-cond]
+                     :else                  [empty-cond])]
+    (reduce #(filter %2 %1) (map second field) conditions)))
+
 
 ; --- state after turn ---
 
-(defn turned-state [app-state turn]
-  (case (:type turn)
-    :move (moved-state app-state (:src turn) (:dst turn))
-    :put (put-state app-state (:koma-type turn) (:dst turn))))
+(def players
+  {0 :white 1 :black})
+
+(defn next-player [player]
+  (players
+    (rem
+      (inc ((clojure.set/map-invert players) player))
+      2)))
 
 (defn moved-state [app-state src dst]
   (let [stocked-state
@@ -203,14 +210,10 @@
         put-field (conj (:field app-state) {(xy dst) {:x (:x dst) :y (:y dst) :koma {:type koma-type :owner putter}}})]
     (assoc used-state :field put-field :turn (next-player putter))))
 
-(def players
-  {0 :white 1 :black})
-
-(defn next-player [player]
-  (players
-    (rem
-      (inc ((clojure.set/map-invert players) player))
-      2)))
+(defn turned-state [app-state turn]
+  (case (:type turn)
+    :move (moved-state app-state (:src turn) (:dst turn))
+    :put (put-state app-state (:koma-type turn) (:dst turn))))
 
 
 ; --- user action ---
@@ -218,11 +221,7 @@
 (def input-chan
   (chan))
 
-(defn promote-selected-koma! [_]
-  (println "promote!")
-  (swap! app-state assoc-in [:selected :src :koma :type] (promoted (-> @app-state :selected :src :koma :type))))
-
-(defn operate-next [dst]
+(defn operate-next! [dst]
      (promote-unless-selected-movable! dst)
      (let [selected (-> @app-state :selected)
            selected-koma (-> selected :src :koma)]
@@ -231,16 +230,36 @@
            (= :move (-> selected :type))
            (enemy-area? (:y dst) (-> selected-koma :owner))
            (promotable? (-> selected-koma :type))
-           (js/confirm "promote?"))
+           (js/confirm "成りますか?"))
          (promote-selected-koma!)))
 
      (put! input-chan (conj (:selected @app-state) {:dst dst})))
 
+(defn update-values [m f & args]
+  (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
+
+(defn highlight! [masus]
+  (let [non-highlight-field (update-values (:field @app-state) #(dissoc % :highlight))
+        highlight-masus (map #(assoc % :highlight true) masus)
+        highlighted-field (reduce #(assoc %1 (xy %2) %2)
+                                  non-highlight-field
+                                  highlight-masus)]
+    (swap! app-state assoc :field highlighted-field)))
+
+(defn select! [turn]
+  (let [targets
+        (cond
+          (= (:type turn) :move) (reach-masus (:field @app-state) (:src turn))
+          (= (:type turn) :put) (putable-masus (:field @app-state) (:koma-type turn) (:turn @app-state)))]
+    (highlight! targets)
+    (swap! app-state assoc :selected turn)))
+
+(defn neutral! []
+  (swap! app-state assoc :field (update-values (:field @app-state) #(dissoc % :highlight))))
+
 (defn on-masu-click [data owner]
-  (println (-> @app-state :selected))
-  (println @data)
   (cond
-    (:highlight @data) (operate-next @data)
+    (:highlight @data) (operate-next! @data)
     (and ((complement nil?) (-> @data :koma))
          (= (-> @data :koma :owner) (:turn @app-state))) (select! {:type :move :src @data})
     :else (neutral!)))
@@ -251,42 +270,17 @@
 
 ; --- game process ---
 
-(defn main []
-  (go
-    (while true
-      (let [turn (<! input-chan)]                ;;R: 入力を待つ
-        (next! turn))
-      ;    (if (= (:turn @app-state) :black)
-      ;      (!> input-chan (best-choice @app-state)))
-      )))                             ;;L: 再)
-
-(main)
-
 (defn next! [turn]
   (swap! app-state conj (turned-state @app-state turn))
   (neutral!))
 
-(defn neutral! [_]
-  (swap! app-state assoc :field (update-values (:field @app-state) #(dissoc % :highlight))))
+(defn main []
+  (go
+    (while true
+      (let [turn (<! input-chan)]
+        (next! turn)))))
 
-(defn select! [turn]
-  (let [targets
-        (cond
-          (= (:type turn) :move) (reach-masus (:field @app-state) (:src turn))
-          (= (:type turn) :put) (putable-masus (:field @app-state) (:koma-type turn) (:turn @app-state)))]
-    (highlight! targets)
-    (swap! app-state assoc :selected turn)))
-
-(defn highlight! [masus]
-  (let [non-highlight-field (update-values (:field @app-state) #(dissoc % :highlight))
-        highlight-masus (map #(assoc % :highlight true) masus)
-        highlighted-field (reduce #(assoc %1 (xy %2) %2)
-                                  non-highlight-field
-                                  highlight-masus)]
-    (swap! app-state assoc :field highlighted-field)))
-
-(defn update-values [m f & args]
-  (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
+(main)
 
 
 ; --- virtual DOM ---
@@ -301,7 +295,7 @@
                                    "masu")
                       :onClick #(on-masu-click data owner)}
                  (if (:type koma)
-                   (dom/img #js {:src (str "images/" (name (:type koma)) ".png")
+                   (dom/img #js {:src (str "http://unagi.xyz/img/" (name (:type koma)) ".png")
                                  :className (if (= (:owner koma) :white)
                                               "koma-white"
                                               "koma-black")})))))))
@@ -326,7 +320,7 @@
     (render [self]
       (dom/div #js {}
                (when (> (:amount app) 0)
-                 (dom/img #js {:src (str "images/" (name (:koma-type app)) ".png")
+                 (dom/img #js {:src (str "http://unagi.xyz/img/" (name (:koma-type app)) ".png")
                                :className (str "koma-" (name (:role app)))
                                :onClick #(on-stock-koma-click (:koma-type app) owner)}))
                (when (> (:amount app) 1)
