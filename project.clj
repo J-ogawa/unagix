@@ -15,6 +15,8 @@
                  [hiccup "1.0.5"]
                  [org.omcljs/om "0.8.8"]]
 
+  :web-content "resources/public"
+
   :aot [server.core]
   :main server.core
   :ring {:handler server.core/app}
