@@ -326,7 +326,7 @@
     (render [self]
       (dom/div #js {}
                (when (> (:amount app) 0)
-                 (dom/img #js {:src (str "img/" (name (:koma-type app)) ".png")
+                 (dom/img #js {:src (str "images/" (name (:koma-type app)) ".png")
                                :className (str "koma-" (name (:role app)))
                                :onClick #(on-stock-koma-click (:koma-type app) owner)}))
                (when (> (:amount app) 1)

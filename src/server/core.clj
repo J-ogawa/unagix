@@ -15,7 +15,6 @@
        id)
   (GET "/shogi" [id]
        (index-page))
-  (route/files "/")
   (route/not-found "Not Found"))
 
 (def app
