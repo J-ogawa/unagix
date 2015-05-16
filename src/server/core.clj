@@ -7,6 +7,7 @@
             [ring.middleware.defaults :refer [wrap-defaults site-defaults]]))
 
 (defroutes app-routes
+  (route/files "/")
   (GET "/" []
        (println "root")
        "root")
