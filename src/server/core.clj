@@ -7,7 +7,6 @@
             [ring.middleware.defaults :refer [wrap-defaults site-defaults]]))
 
 (defroutes app-routes
-  (route/files "/")
   (GET "/" []
        (println "root")
        "root")
@@ -16,6 +15,7 @@
        id)
   (GET "/shogi" [id]
        (index-page))
+  (route/files "/")
   (route/not-found "Not Found"))
 
 (def app
