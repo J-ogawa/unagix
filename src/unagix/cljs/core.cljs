@@ -44,8 +44,8 @@
   (atom
     {:field (field-data koma-mapping)
      :stock {:black {} :white {}}
-;     :stock {:black {:hu 5 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0}
-;             :white {:hu 5 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0} }
+     ;     :stock {:black {:hu 5 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0}
+     ;             :white {:hu 5 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0} }
      :turn :white}))
 
 
@@ -138,9 +138,9 @@
                  (= koma-type :hu) 1
                  (= koma-type :ky) 1
                  (= koma-type :ke) 2
-                :else 0)
+                 :else 0)
         border (owner {:white scalar :black (- 8 scalar)})]
-  #((owner {:white >= :black <=}) (:y %) border)))
+    #((owner {:white >= :black <=}) (:y %) border)))
 
 (defn exist-hu-y-lines [field owner]
   (let [exist-masus (filter #(and ((complement nil?) (:koma %))
@@ -196,16 +196,6 @@
   (chan))
 
 (defn on-masu-click [data owner]
-
-
-;  (let [ch (chan)]
-;    (go
-;      (while true
-;        (let [v (<! ch)]
-;          (println "Read: " v))))
-;    (go
-;      (>! ch 1)))
-
   (cond
     ;(:highlight @data) (next! (conj (:selected @app-state) {:dst @data}))
     (:highlight @data) (put! input-chan (conj (:selected @app-state) {:dst @data}))
@@ -223,88 +213,18 @@
   (go
     (while true
       (let [turn (<! input-chan)]                ;;R: 入力を待つ
-    (println "===")
-    (println turn)
+        (println "===")
+        (println turn)
         (next! turn))
-  ;    (if (= (:turn @app-state) :black)
-  ;      (!> input-chan (best-choice @app-state)))
+      ;    (if (= (:turn @app-state) :black)
+      ;      (!> input-chan (best-choice @app-state)))
       )))                             ;;L: 再)
 
-(defn com []
-  (go
-    (loop []
-    ;  (<! (timeout 1000))
-    ;  (println "---")
-    ;  (if (= (:turn @app-state) :black)
-    ;    (if-not (= (:com-thinking @app-state) true)
-    ;      ((swap! app-state assoc :com-thinking true)
-                      (let [_turn (<! channel-1)]
-           (println "---- com turn !!! ----")
-             (next! (first _turn)))
-           ;(put! input-chan (first (best-choice @app-state)))
-           (println "0")
-          ; (swap! app-state assoc :com-thinking false))
-      (recur))))
-
 (main)
-(com)
-
-(def worker-count 2)
-;(def worker-script  "js/compiled/out/unagix/core.js")
-;(def worker-script "js/compiled/out/unagix/cljs/core.js")
-(def worker-script "js/compiled/unagix.js")
-
-(defservantfn best-com-choice [state]
-  (best-choice state))
-
-(def servant-channel1 (servant/spawn-servants worker-count worker-script))
-
-(def channel-1 (servant/servant-thread servant-channel1 servant/standard-message best-com-choice @app-state))
-
-;(def channel-1 (first (best-choice @app-state)))
-
-(if (servant/webworker?)
-    (worker/bootstrap)
-    (set! (.-onload js/window) window-load))
 
 (defn next! [turn]
-  (println "1")
   (swap! app-state conj (turned-state @app-state turn))
-  (println "2")
-  (neutral!)
-  (println "3")
-
-;  (go
-;    (loop []
-;           (let [_turn (<! channel-1)]
-;             (println "---- com turn !!! ----")
-;             (next! (first _turn)))
-;      (recur)))
-;
-;(go
-;  (loop
-;  (if (= (:turn @app-state) :black)
-;   (let [_best-choice (<! (best-choice @app-state))]
-;     (println " ")
-;     (println @aaa)
-;   (next! (first _best-choice))))
-;  ))
-
-;  (if (= (:turn @app-state) :black)
-;  (let [ch (chan)]
-;    (go
-;      (while true
-;        (println "1111")
-;        (let [_best-choice (<! ch)]
-;          (next! (first _best-choice)))))
-;    (go
-;        (println "2222")
-;      (println "send 1")
-;      (>! ch (best-choice @app-state))
-;        ))) ; [1]
-
-
-  )
+  (neutral!))
 
 (defn neutral! [_]
   (swap! app-state assoc :field (update-values (:field @app-state) #(dissoc % :highlight))))
@@ -314,8 +234,8 @@
         (cond
           (= (:type turn) :move) (reach-masus (:field @app-state) (:src turn))
           (= (:type turn) :put) (putable-masus (:field @app-state) (:koma-type turn) (:turn @app-state)))]
-  (highlight! targets)
-  (swap! app-state assoc :selected turn)))
+    (highlight! targets)
+    (swap! app-state assoc :selected turn)))
 
 (defn highlight! [masus]
   (let [non-highlight-field (update-values (:field @app-state) #(dissoc % :highlight))
@@ -327,98 +247,6 @@
 
 (defn update-values [m f & args]
   (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
-
-
-; --- AI ---
-
-(defn choices
-  ([app-state]
-   (choices app-state (:turn app-state)))
-
-  ([app-state player]
-   (all-moves app-state player)))
-;        all-puts[app-state]))
-
-;(defn aaaa [depth bafore after
-
-;(defn best [depth tree state targets candity]
-;  (println :-----)
-;  (println tree)
-;  (println state)
-;  (println targets)
-;  (println candity)
-;  (println ((operator state) 1 2))
-;  (println :-----)
-;  (if (> (count tree) depth)
-;    tree
-;    (if (= (count targets) 0)
-;      (if (nil? candity)
-;        (recur depth tree state (choices state) candity)
-;        (recur depth (conj tree candity) (turned-state state candity) nil nil))
-;      (if (nil? candity)
-;        (recur depth tree state (rest targets) (first targets))
-;        (let [target-state (turned-state state (first targets))]
-;          (cond
-;  ;          (and ((complement nil?) (last tree))
-;  ;               (<= (score (last tree)) (score target-state)))  target-state
-;            (or (nil? candity)
-;                ((operator state) (score candity) (score target-state))) (recur depth tree state (rest targets) (first targets))
-;            :else                                         (recur depth tree state (rest targets) candity)))))))
-;
-;(defn operator [state]
-;  (if (= (:turn state) :white)
-;    <=
-;    >=))
-
-(defn best-choice
-  ([app-state]
-;  (best 2 nil app-state nil nil)))
-   (best-choice app-state (choices app-state) nil))
-
-  ([app-state targets candity-tree]
-   (if (= (count targets) 0)
-     candity-tree
-     (let [target-state (turned-state app-state (first targets))]
-       (if (nil? candity-tree)
-         (recur app-state (rest targets) [(first targets) (best-choice target-state (choices target-state) nil nil)])
-         (let [best-child (best-choice target-state (choices target-state) candity-tree nil)]
-           (if (< (score best-child) (score (last candity-tree)))
-             (recur app-state (rest targets) [(first targets) best-child])
-             (recur app-state (rest targets) candity-tree)))))))
-
-  ([app-state targets candity-tree candity]
-   (swap! aaa inc)
-   (if (= (count targets) 0)
-     candity
-     (let [target-state (turned-state app-state (first targets))]
-       (cond
-         (and ((complement nil?) (last candity-tree))
-              (<= (score (last candity-tree))
-                  (score target-state)))               target-state
-         (or (nil? candity)
-             (< (score candity) (score target-state))) (recur app-state (rest targets) candity-tree target-state)
-         :else                                         (recur app-state (rest targets) candity-tree candity))))))
-
-(defn score [app-state]
-;  (+ (move-range-score app-state)
-;     (field-unit-score app-state)))
-   (field-unit-score app-state))
-
-(defn move-range-score [app-state]
-  (- (count (choices app-state :white)) (count (choices app-state :black))))
-
-(defn field-unit-score [app-state]
-  (reduce + (map #(koma-score %)
-                 (filter #((complement nil?) %)
-                         (map #(:koma %) (vals (:field app-state)))))))
-
-(def aaa
-  (atom 0))
-
-(defn koma-score [koma]
-  (*
-    ((:type koma) {:hu 4 :ke 6 :gi 9 :ki 10 :gy 10000 :ka 15 :hi 17 :nhu 11 :nke 11 :ngi 11})
-    ((:owner koma) {:white 1 :black -1})))
 
 
 ; --- virtual DOM ---
@@ -480,8 +308,8 @@
   (reify
     om/IRender
     (render [self]
-       (dom/div #js {:className "side"}
-                (om/build komadai player)))))
+      (dom/div #js {:className "side"}
+               (om/build komadai player)))))
 
 (defn container [app owner]
   (reify
