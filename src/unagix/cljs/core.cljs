@@ -233,16 +233,17 @@
 (defn com []
   (go
     (loop []
-      (<! (timeout 1000))
-      (println "---")
-      (if (= (:turn @app-state) :black)
-        (if-not (= (:com-thinking @app-state) true)
-          ((swap! app-state assoc :com-thinking true)
-           (let [_turn (<! channel-1)]
-             (println "---- com turn !!! ----")
+    ;  (<! (timeout 1000))
+    ;  (println "---")
+    ;  (if (= (:turn @app-state) :black)
+    ;    (if-not (= (:com-thinking @app-state) true)
+    ;      ((swap! app-state assoc :com-thinking true)
+                      (let [_turn (<! channel-1)]
+           (println "---- com turn !!! ----")
              (next! (first _turn)))
-           ;      (put! input-chan (first (best-choice @app-state)))
-           (swap! app-state assoc :com-thinking false))))
+           ;(put! input-chan (first (best-choice @app-state)))
+           (println "0")
+          ; (swap! app-state assoc :com-thinking false))
       (recur))))
 
 (main)
@@ -260,20 +261,25 @@
 
 (def channel-1 (servant/servant-thread servant-channel1 servant/standard-message best-com-choice @app-state))
 
+;(def channel-1 (first (best-choice @app-state)))
+
 (if (servant/webworker?)
     (worker/bootstrap)
     (set! (.-onload js/window) window-load))
 
 (defn next! [turn]
+  (println "1")
   (swap! app-state conj (turned-state @app-state turn))
+  (println "2")
   (neutral!)
+  (println "3")
 
-  (go
-    (loop []
-           (let [_turn (<! channel-1)]
-             (println "---- com turn !!! ----")
-             (next! (first _turn)))
-      (recur)))
+;  (go
+;    (loop []
+;           (let [_turn (<! channel-1)]
+;             (println "---- com turn !!! ----")
+;             (next! (first _turn)))
+;      (recur)))
 ;
 ;(go
 ;  (loop
