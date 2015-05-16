@@ -41,7 +41,13 @@
                          :optimizations :advanced
                          :pretty-print false
                          :preamble ["react/react.min.js"]
-                         :externs ["react/externs/react.js"]}}]}
+                         :externs ["react/externs/react.js"]}}
+             {:id "prod"
+              :source-paths ["src"]
+              :compiler {:output-to "public/js/compiled/unagix.js"
+                         :output-dir "public/js/compiled/out"
+                         :optimizations :none
+                         :source-map true}}]}
   :figwheel {
              :http-server-root "public" ;; default and assumes "resources"
              :server-port 3449 ;; default
