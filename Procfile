@@ -1,3 +1,3 @@
-web: lein cljsbuild once min
+web: lein cljsbuild once
 web: lein run $PORT
 
