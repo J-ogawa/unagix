@@ -1,15 +1,13 @@
-(ns unagix.cljs.core
+(ns ^:figwheel-always unagix.core
   (:require
-    [figwheel.client :as fw]
+    [om.core :as om :include-macros true]
+    [om.dom :as dom :include-macros true]
     [om.core :as om :include-macros true]
     [om.dom :as dom :include-macros true]
     [cljs.core.async :refer [timeout put! chan <!]]
-    [servant.core :as servant]
-    [servant.worker :as worker]
     [clojure.data :as data]
     [clojure.string :as string])
-  (:require-macros [cljs.core.async.macros :refer [go]]
-                   [servant.macros :refer [defservantfn]]))
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (enable-console-print!)
 
@@ -367,4 +365,10 @@
   app-state
   {:target (. js/document (getElementById "app"))})
 
-(fw/watch-and-reload)
+
+(defn on-js-reload []
+  ;; optionally touch your app-state to force rerendering depending on
+  ;; your application
+  ;; (swap! app-state update-in [:__figwheel_counter] inc)
+)
+
