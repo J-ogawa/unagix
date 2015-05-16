@@ -301,7 +301,7 @@
                                    "masu")
                       :onClick #(on-masu-click data owner)}
                  (if (:type koma)
-                   (dom/img #js {:src (str "img/" (name (:type koma)) ".png")
+                   (dom/img #js {:src (str "images/" (name (:type koma)) ".png")
                                  :className (if (= (:owner koma) :white)
                                               "koma-white"
                                               "koma-black")})))))))
