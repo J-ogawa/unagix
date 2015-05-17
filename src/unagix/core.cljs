@@ -63,12 +63,12 @@
    :ka  {:long  [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]}
    :hi  {:long  [[-1  0] [ 0 -1] [ 0  1] [ 1  0]]}
    :gy  {:short [[-1 -1] [-1  0] [-1  1] [ 0 -1] [ 0  1] [ 1 -1] [ 1  0] [ 1  1]]}
-   :nhu (get basic-type-vec :ki)
-   :nky (get basic-type-vec :ki)
-   :nke (get basic-type-vec :ki)
-   :ngi (get basic-type-vec :ki)
-   :nka (conj (get basic-type-vec :ka) {:short [[ 0 -1] [ 0  1] [-1  0] [ 1  0]]})
-   :nhi (conj (get basic-type-vec :hi) {:short [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]})})
+   :nhu {:short [[-1 -1] [-1  0] [ 0 -1] [ 0  1] [ 1 -1] [ 1  0]]}
+   :nky {:short [[-1 -1] [-1  0] [ 0 -1] [ 0  1] [ 1 -1] [ 1  0]]}
+   :nke {:short [[-1 -1] [-1  0] [ 0 -1] [ 0  1] [ 1 -1] [ 1  0]]}
+   :ngi {:short [[-1 -1] [-1  0] [ 0 -1] [ 0  1] [ 1 -1] [ 1  0]]}
+   :nka (conj {:long  [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]} {:short [[ 0 -1] [ 0  1] [-1  0] [ 1  0]]})
+   :nhi (conj {:long  [[-1  0] [ 0 -1] [ 0  1] [ 1  0]]} {:short [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]})})
 
 (defn promotable? [_type]
   (= -1 (.indexOf (str _type) "n")))
@@ -138,7 +138,7 @@
        :mine  reaching))))
 
 (defn reach-masus [field src]
-  (let [type-vec (basic-type-vec (-> src :koma :type))
+  (let [type-vec (get basic-type-vec (-> src :koma :type))
         direction {:white [1 1] :black [1 -1]}]
     (filter (complement nil?)
             (flatten
