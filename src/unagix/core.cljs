@@ -89,7 +89,7 @@
     (<  (:y coordinate) (:y field-size))))
 
 (defn promote-selected-koma! []
-  (swap! app-state assoc-in [:selected :src :koma :type] (promoted (-> @app-state :selected :src :koma :type))))
+  (swap! app-state update-in [:selected :src :koma :type] promoted))
 
 (defn promote-unless-selected-movable! [dst]
   (let [selected (:selected @app-state)
@@ -134,8 +134,7 @@
        :mine  reaching))))
 
 (defn reach-masus [field src]
-  (let [type-vec (get basic-type-vec (-> src :koma :type))
-        direction {:white [1 1] :black [1 -1]}]
+  (let [type-vec (get basic-type-vec (-> src :koma :type))]
     (filter (complement nil?)
             (flatten
               (conj (map #(reach-short field src %)
@@ -202,8 +201,7 @@
   (-> app-state
       (stocked-state src dst)
       (assoc :field (moved-field app-state src dst))
-      (update :turn
-      next-player)))
+      (update :turn next-player)))
 
 (defn put-state [app-state koma-type dst]
   (let [putter (:turn app-state)
