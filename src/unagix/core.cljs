@@ -103,11 +103,11 @@
 
 (defn xy [masu] (str (:x masu) (:y masu)))
 
-(defn check-dst [turn dst]
+(defn check-dst [owner dst]
   (cond
     (nil? dst)                        :out-of-field
     (nil? (:koma dst))                :empty-space
-    (not= (-> dst :koma :owner) turn) :enemy
+    (not= (-> dst :koma :owner) owner) :enemy
     :else                             :mine))
 
 (defn destination [field src reach-vec]
@@ -117,30 +117,31 @@
   (let [dst (destination field src reach-vec)]
     (case (check-dst (-> src :koma :owner) dst)
       :out-of-field nil
-      :empty-space dst
-      :enemy dst
-      :mine nil)))
+      :empty-space  dst
+      :enemy        dst
+      :mine         nil)))
 
 (defn reach-long
   ([field src reach-vec]
    (reach-long field (-> src :koma :owner) src reach-vec []))
 
-  ([field turn src reach-vec reaching]
+  ([field owner src reach-vec reaching]
    (let [dst (destination field src reach-vec)]
-     (case (check-dst turn dst)
+     (case (check-dst owner dst)
        :out-of-field reaching
-       :empty-space (reach-long field turn dst reach-vec (conj reaching dst))
-       :enemy (conj reaching dst)
-       :mine  reaching))))
+       :empty-space  (reach-long field owner dst reach-vec (conj reaching dst))
+       :enemy        (conj reaching dst)
+       :mine         reaching))))
+
+(defn reach-vecs [koma vec-kind]
+  (map #(map * (direction (-> koma :owner)) %)
+       ((get basic-type-vec (-> koma :type)) vec-kind)))
 
 (defn reach-masus [field src]
-  (let [type-vec (get basic-type-vec (-> src :koma :type))]
-    (filter (complement nil?)
-            (flatten
-              (conj (map #(reach-short field src %)
-                         (map #(map * (direction (-> src :koma :owner)) %) (type-vec :short)))
-                    (map #(reach-long field src %)
-                         (map #(map * (direction (-> src :koma :owner)) %) (type-vec :long))))))))
+  (->> (conj (map #(reach-short field src %) (reach-vecs (:koma src) :short))
+             (map #(reach-long field src %) (reach-vecs (:koma src) :long)))
+       (filter (complement nil?))
+       (flatten)))
 
 
 ; --- put ---
@@ -186,27 +187,24 @@
              (inc ((clojure.set/map-invert players) player))
              2)))
 
-(defn moved-field [app-state src dst]
-  (conj (:field app-state)
-        {(xy src) (dissoc src :koma)}
-        {(xy dst) (assoc dst :koma (:koma src))}))
-
 (defn moved-state [app-state src dst]
   (cond-> app-state
     (-> dst :koma) (update-in [:stock (-> src :koma :owner) (-> dst :koma :type)] inc)
-    true (assoc :field (moved-field app-state src dst))
-    true (update :turn next-player)))
+    true           (update :field #(conj %
+                                         {(xy src) (dissoc src :koma)}
+                                         {(xy dst) (assoc dst :koma (:koma src))}))
+    true           (update :turn next-player)))
 
 (defn put-state [app-state koma-type dst]
-  (let [putter (:turn app-state)
-        used-state (update-in app-state [:stock putter koma-type] dec)
-        put-field (conj (:field app-state) {(xy dst) {:x (:x dst) :y (:y dst) :koma {:type koma-type :owner putter}}})]
-    (assoc used-state :field put-field :turn (next-player putter))))
+  (-> app-state
+      (update-in [:stock (:turn app-state) koma-type] dec)
+      (update :field #(conj % {(xy dst) {:x (:x dst) :y (:y dst) :koma {:type koma-type :owner (:turn app-state)}}}))
+      (update :turn next-player)))
 
 (defn turned-state [app-state turn]
-  (case (:type turn)
-    :move (moved-state app-state (:src turn) (:dst turn))
-    :put (put-state app-state (:koma-type turn) (:dst turn))))
+  (cond-> app-state
+    (= (:type turn) :move) (moved-state (:src turn) (:dst turn))
+    (= (:type turn) :put)  (put-state (:koma-type turn) (:dst turn))))
 
 
 ; --- user action ---
@@ -253,8 +251,7 @@
 (defn on-masu-click [data owner]
   (cond
     (:highlight @data) (operate-next! @data)
-    (and ((complement nil?) (-> @data :koma))
-         (= (-> @data :koma :owner) (:turn @app-state))) (select! {:type :move :src @data})
+    (= (-> @data :koma :owner) (:turn @app-state)) (select! {:type :move :src @data})
     :else (neutral!)))
 
 (defn on-stock-koma-click [data owner]
