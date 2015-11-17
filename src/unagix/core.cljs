@@ -151,12 +151,19 @@
     #((owner {:white >= :black <=}) (:y %) border)))
 
 (defn exist-hu-y-lines [field owner]
-  (let [exist-masus (filter #(and ((complement nil?) (:koma %))
-                                  (= (-> % :koma :owner) owner)
-                                  (= (-> % :koma :type) :hu))
-                            (map second field))]
-    (distinct
-      (map #(:x %) exist-masus))))
+  (->> field
+       (map second)
+       (as-> _ (filter #(and ((complement nil?) (:koma _))
+                             (= (-> _ :koma :owner) owner)
+                             (= (-> _ :koma :type) :hu))))
+       (map #(:x %)) ;(map :x) if can
+       (distinct)))
+;  (let [exist-masus (filter #(and ((complement nil?) (:koma %))
+;                                  (= (-> % :koma :owner) owner)
+;                                  (= (-> % :koma :type) :hu))
+;                            (map second field))]
+;    (distinct
+;      (map #(:x %) exist-masus))))
 
 (defn non-nihu-cond [field owner]
   #(nil? (some #{(:x %)} (exist-hu-y-lines field owner))))
