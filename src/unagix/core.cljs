@@ -76,9 +76,6 @@
     (< y enemy-line)
     (> y (- (:y field-size) enemy-line 1))))
 
-(defn promoted [_type]
-  (keyword (string/join ["n" (subs (str _type) 1)])))
-
 (def direction {:white [1 1] :black [1 -1]})
 
 (defn field-contains? [coordinate]
@@ -89,17 +86,15 @@
     (<  (:y coordinate) (:y field-size))))
 
 (defn promote-selected-koma! []
-  (swap! app-state update-in [:selected :src :koma :type] promoted))
+  (swap! app-state update-in [:selected :src :koma :type] #(keyword (str "n" (name %)))))
 
 (defn promote-unless-selected-movable! [dst]
-  (let [selected (:selected @app-state)
-        _type    (-> selected :src :koma :type)]
-    (if
-      (some #(= _type %) [:hu :ky :ke])
-      (let [y-move (* (last (direction (-> selected :src :koma :owner)))
-                      (-> basic-type-vec _type vals first first last))]
-        (if-not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
-          (promote-selected-koma!))))))
+  (if
+    (some #(= (-> @app-state :selected :src :koma :type) %) [:hu :ky :ke])
+    (let [y-move (* (last (direction (-> @app-state :selected :src :koma :owner)))
+                    (-> basic-type-vec (-> @app-state :selected :src :koma :type) vals first first last))]
+      (if-not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
+        (promote-selected-koma!)))))
 
 (defn xy [masu] (str (:x masu) (:y masu)))
 
@@ -179,8 +174,7 @@
 
 ; --- state after turn ---
 
-(def players
-  {0 :white 1 :black})
+(def players {0 :white 1 :black})
 
 (defn next-player [player]
   (players (rem
