@@ -68,9 +68,6 @@
    :nka (conj {:long  [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]} {:short [[ 0 -1] [ 0  1] [-1  0] [ 1  0]]})
    :nhi (conj {:long  [[-1  0] [ 0 -1] [ 0  1] [ 1  0]]} {:short [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]})})
 
-(defn promotable? [_type]
-  (= -1 (.indexOf (str _type) "n")))
-
 (defn enemy-area? [y player]
   (if (= :white player)
     (< y enemy-line)
@@ -95,6 +92,15 @@
                     (-> basic-type-vec (-> @app-state :selected :src :koma :type) vals first first last))]
       (if-not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
         (promote-selected-koma!)))))
+
+(defn promote-if-owner-want-to! []
+  (if
+    (and
+      (= :move (-> @app-state :selected :type))
+      (= -1 (.indexOf (str (-> @app-state :selected :src :koma :type)) "n"))
+      (enemy-area? (:y dst) (-> @app-state :selected :src :koma :owner))
+      (js/confirm "成りますか?"))
+    (promote-selected-koma!)))
 
 (defn xy [masu] (str (:x masu) (:y masu)))
 
@@ -153,9 +159,9 @@
 (defn exist-hu-y-lines [field owner]
   (->> field
        (map second)
-       (as-> _ (filter #(and ((complement nil?) (:koma _))
-                             (= (-> _ :koma :owner) owner)
-                             (= (-> _ :koma :type) :hu))))
+       (filter #(and ((complement nil?) (:koma %))
+                     (= (-> % :koma :owner) owner)
+                     (= (-> % :koma :type) :hu)))
        (map #(:x %)) ;(map :x) if can
        (distinct)))
 ;  (let [exist-masus (filter #(and ((complement nil?) (:koma %))
@@ -215,16 +221,7 @@
 
 (defn operate-next! [dst]
   (promote-unless-selected-movable! dst)
-  (let [selected (-> @app-state :selected)
-        selected-koma (-> selected :src :koma)]
-    (if
-      (and
-        (= :move (-> selected :type))
-        (enemy-area? (:y dst) (-> selected-koma :owner))
-        (promotable? (-> selected-koma :type))
-        (js/confirm "成りますか?"))
-      (promote-selected-koma!)))
-
+  (promote-if-owner-want-to!)
   (put! input-chan (conj (:selected @app-state) {:dst dst})))
 
 (defn update-values [m f & args]
