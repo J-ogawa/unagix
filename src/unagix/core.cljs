@@ -25,14 +25,12 @@
    [ nil  "+hi"  nil   nil   nil   nil   nil  "+ka"  nil ]
    ["+ky" "+ke" "+gi" "+ki" "+gy" "+ki" "+gi" "+ke" "+ky"]])
 
-(def field-size
-  {:x 9 :y 9})
+(def field-size {:x 9 :y 9})
 
-(def enemy-line
-  3)
+(def enemy-line 3)
 
 (defn koma [mapping x y]
-  (if-let [_str (get (get mapping y) x)]
+  (if-let [_str (-> (get mapping y) (get x))]
     {:type (keyword (string/join (rest _str)))
      :owner (if (= "+" (first _str))
               :white
@@ -81,8 +79,7 @@
 (defn promoted [_type]
   (keyword (string/join ["n" (subs (str _type) 1)])))
 
-(def direction
-  {:white [1 1] :black [1 -1]})
+(def direction {:white [1 1] :black [1 -1]})
 
 (defn field-contains? [coordinate]
   (and
@@ -100,19 +97,18 @@
     (if
       (some #(= _type %) [:hu :ky :ke])
       (let [y-move (* (last (direction (-> selected :src :koma :owner)))
-                    (-> basic-type-vec _type vals first first last))]
+                      (-> basic-type-vec _type vals first first last))]
         (if-not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
           (promote-selected-koma!))))))
 
-(defn xy [masu]
-  (str (:x masu) (:y masu)))
+(defn xy [masu] (str (:x masu) (:y masu)))
 
 (defn check-dst [turn dst]
   (cond
-    (nil? dst) :out-of-field
-    (nil? (:koma dst)) :empty-space
+    (nil? dst)                        :out-of-field
+    (nil? (:koma dst))                :empty-space
     (not= (-> dst :koma :owner) turn) :enemy
-    :else :mine))
+    :else                             :mine))
 
 (defn destination [field src reach-vec]
   (get field (string/join (map + [(:x src) (:y src)] reach-vec))))
@@ -192,18 +188,22 @@
       (inc ((clojure.set/map-invert players) player))
       2)))
 
+(defn stocked-state [app-state src dst]
+  (if-let [dst-koma (-> dst :koma)]
+    (update-in app-state [:stock (-> src :koma :owner) (:type dst-koma)] inc)
+    app-state))
+
+(defn moved-field [app-state src dst]
+  (conj (:field app-state)
+        {(xy src) (dissoc src :koma)}
+        {(xy dst) (assoc dst :koma (:koma src))}))
+
 (defn moved-state [app-state src dst]
-  (let [stocked-state
-        (if-let [dst-koma (-> dst :koma)]
-          (update-in app-state [:stock (-> src :koma :owner) (:type dst-koma)] inc)
-          app-state)
-        moved-field (conj (:field app-state)
-                          {(xy src) (dissoc src :koma)}
-                          {(xy dst) (assoc dst :koma (:koma src))})]
-    (assoc
-      (assoc stocked-state :field moved-field)
-      :turn
-      (next-player (-> src :koma :owner)))))
+  (-> app-state
+      (stocked-state src dst)
+      (assoc :field (moved-field app-state src dst))
+      (update :turn
+      next-player)))
 
 (defn put-state [app-state koma-type dst]
   (let [putter (:turn app-state)
@@ -223,18 +223,18 @@
   (chan))
 
 (defn operate-next! [dst]
-     (promote-unless-selected-movable! dst)
-     (let [selected (-> @app-state :selected)
-           selected-koma (-> selected :src :koma)]
-       (if
-         (and
-           (= :move (-> selected :type))
-           (enemy-area? (:y dst) (-> selected-koma :owner))
-           (promotable? (-> selected-koma :type))
-           (js/confirm "成りますか?"))
-         (promote-selected-koma!)))
+  (promote-unless-selected-movable! dst)
+  (let [selected (-> @app-state :selected)
+        selected-koma (-> selected :src :koma)]
+    (if
+      (and
+        (= :move (-> selected :type))
+        (enemy-area? (:y dst) (-> selected-koma :owner))
+        (promotable? (-> selected-koma :type))
+        (js/confirm "成りますか?"))
+      (promote-selected-koma!)))
 
-     (put! input-chan (conj (:selected @app-state) {:dst dst})))
+  (put! input-chan (conj (:selected @app-state) {:dst dst})))
 
 (defn update-values [m f & args]
   (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
@@ -365,5 +365,5 @@
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
-)
+  )
 
