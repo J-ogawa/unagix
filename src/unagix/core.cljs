@@ -182,15 +182,9 @@
   {0 :white 1 :black})
 
 (defn next-player [player]
-  (players
-    (rem
-      (inc ((clojure.set/map-invert players) player))
-      2)))
-
-(defn stocked-state [app-state src dst]
-  (if-let [dst-koma (-> dst :koma)]
-    (update-in app-state [:stock (-> src :koma :owner) (:type dst-koma)] inc)
-    app-state))
+  (players (rem
+             (inc ((clojure.set/map-invert players) player))
+             2)))
 
 (defn moved-field [app-state src dst]
   (conj (:field app-state)
@@ -198,10 +192,10 @@
         {(xy dst) (assoc dst :koma (:koma src))}))
 
 (defn moved-state [app-state src dst]
-  (-> app-state
-      (stocked-state src dst)
-      (assoc :field (moved-field app-state src dst))
-      (update :turn next-player)))
+  (cond-> app-state
+    (-> dst :koma) (update-in [:stock (-> src :koma :owner) (-> dst :koma :type)] inc)
+    true (assoc :field (moved-field app-state src dst))
+    true (update :turn next-player)))
 
 (defn put-state [app-state koma-type dst]
   (let [putter (:turn app-state)
