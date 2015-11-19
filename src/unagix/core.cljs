@@ -202,12 +202,6 @@
                       (-> basic-type-vec _type vals first first last))]
         (if-not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
           (promote-selected-koma!))))))
-;   (if
-;     (some #(= (-> @app-state :selected :src :koma :type) %) [:hu :ky :ke])
-;     (let [y-move (* (last (direction (-> @app-state :selected :src :koma :owner)))
-;                     (-> basic-type-vec (-> @app-state :selected :src :koma :type) vals first first last))]
-;       (if-not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
-;         (promote-selected-koma!)))))
 
 (defn promote-if-owner-want-to! [dst]
   (if
