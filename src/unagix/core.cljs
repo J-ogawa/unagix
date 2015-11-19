@@ -150,7 +150,7 @@
     true))
 
 (defn putable-masus [field koma-type owner]
-  (cond->> field
+  (->> field
     (map second)
     (filter #(nil? (:koma %)))
     (filter #(movable? % koma-type owner))
