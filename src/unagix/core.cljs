@@ -39,9 +39,9 @@
 (defn field-data [koma-mapping]
   "{00 {:x 0 :y 0 :koma {:type 'ky'}} 01 {...} 02 {...}}"
   (reduce
-    #(conj %1 %2)
-    {}
-    (for [x (range 9) y (range 9)] {(str x y) {:x x :y y :koma (koma koma-mapping x y)}})))
+    conj
+    (for [x (range 9) y (range 9)]
+      {(str x y) {:x x :y y :koma (koma koma-mapping x y)}})))
 
 (defonce app-state
   (atom
@@ -86,10 +86,10 @@
 
 (defn check-dst [owner dst]
   (cond
-    (nil? dst)                        :out-of-field
-    (nil? (:koma dst))                :empty-space
+    (nil? dst)                         :out-of-field
+    (nil? (:koma dst))                 :empty-space
     (not= (-> dst :koma :owner) owner) :enemy
-    :else                             :mine))
+    :else                              :mine))
 
 (defn destination [field src reach-vec]
   (get field (string/join (map + [(:x src) (:y src)] reach-vec))))
@@ -118,7 +118,7 @@
   (map #(map * (direction (-> koma :owner)) %)
        ((get basic-type-vec (-> koma :type)) vec-kind)))
 
-(defn reach-masus [field src]
+(defn movable-masus [field src]
   (->> (conj (map #(reach-short field src %) (reach-vecs (:koma src) :short))
              (map #(reach-long field src %) (reach-vecs (:koma src) :long)))
        (filter (complement nil?))
@@ -127,28 +127,7 @@
 
 ; --- put ---
 
-; (defn unbackable-cond [koma-type owner]
-;   (let [scalar (cond
-;                  (= koma-type :hu) 1
-;                  (= koma-type :ky) 1
-;                  (= koma-type :ke) 2
-;                  :else 0)
-;         border (owner {:white scalar :black (- 8 scalar)})]
-;     #((owner {:white >= :black <=}) (:y %) border)))
-
-; (defn unbackable-length [koma-type]
-;   (cond
-;     (= koma-type :hu) 1
-;     (= koma-type :ky) 1
-;     (= koma-type :ke) 2
-;     :else 0))
-;
-; (defn unbackable-cond [koma-type owner]
-;   #((if (= owner :white) >= <=)
-;     (:y %)
-;     (if (= owner :white) unbackable-length (- 8 unbackable-length))))
-
-(defn backable? [masu koma-type owner]
+(defn movable? [masu koma-type owner]
   (cond
     (or (= koma-type :hu)
         (= koma-type :ky)) (or (and (= owner :white) (> (:y masu) 0))
@@ -157,49 +136,25 @@
                                (and (= owner :black) (< (:y masu) 7)))
     :else                  true))
 
-
-
-
-
-(defn exist-hu-y-lines [field owner]
-  (->> field
-       (map second)
-       (filter #(and ((complement nil?) (:koma %))
-                     (= (-> % :koma :owner) owner)
-                     (= (-> % :koma :type) :hu)))
-       (map #(:x %)) ;(map :x) if can
-       (distinct)))
-;  (let [exist-masus (filter #(and ((complement nil?) (:koma %))
-;                                  (= (-> % :koma :owner) owner)
-;                                  (= (-> % :koma :type) :hu))
-;                            (map second field))]
-;    (distinct
-;      (map #(:x %) exist-masus))))
-
-(defn non-nihu-cond [field owner]
-  #(nil? (some #{(:x %)} (exist-hu-y-lines field owner))))
-
-(defn not-nihu? [masu field owner]
-  (->> (exist-hu-y-lines field owner)
-       (some #(= (:x masu) %))
-       (nil?)))
+(defn not-nihu? [masu field koma-type owner]
+  (if (= koma-type :hu)
+    (->> field
+         (map second)
+         (filter #(and ((complement nil?) (:koma %))
+                       (= (-> % :koma :owner) owner)
+                       (= (-> % :koma :type) :hu)))
+         (map #(:x %)) ;(map :x) if can
+         (distinct)
+         (some #(= (:x masu) %))
+         (nil?))
+    true))
 
 (defn putable-masus [field koma-type owner]
   (cond->> field
-    true              (map second)
-    true              (filter #(nil? (:koma %)))
-    true              (filter #(backable? % koma-type owner))
-    (= koma-type :hu) (filter #(not-nihu? % field owner))))
-
-;       (let [empty-cond      #(nil? (:koma %))
-;             unbackable-cond (unbackable-cond koma-type owner)
-;             conditions (cond
-;                          (= koma-type :hu)      [empty-cond unbackable-cond (non-nihu-cond field owner)]
-;                          (or (= koma-type :ky)
-;                              (= koma-type :ke)) [empty-cond unbackable-cond]
-;                          :else                  [empty-cond])]
-;         (reduce #(filter %2 %1) (map second field) conditions)))
-
+    (map second)
+    (filter #(nil? (:koma %)))
+    (filter #(movable? % koma-type owner))
+    (filter #(not-nihu? % field koma-type owner))))
 
 ; --- state after turn ---
 
@@ -282,7 +237,7 @@
 (defn select! [turn]
   (let [targets
         (cond
-          (= (:type turn) :move) (reach-masus (:field @app-state) (:src turn))
+          (= (:type turn) :move) (movable-masus (:field @app-state) (:src turn))
           (= (:type turn) :put) (putable-masus (:field @app-state) (:koma-type turn) (:turn @app-state)))]
     (highlight! targets)
     (swap! app-state assoc :selected turn)))
