@@ -151,10 +151,10 @@
 (defn backable? [masu koma-type owner]
   (cond
     (or (= koma-type :hu)
-        (= koma-type :ky)) (or (and (= owner :white) (< (:x masu) 8))
-                               (and (= owner :black) (> (:x masu) 0)))
-    (= koma-type :ke)      (or (and (= owner :white) (< (:x masu) 7))
-                               (and (= owner :black) (> (:x masu) 1)))
+        (= koma-type :ky)) (or (and (= owner :white) (> (:y masu) 0))
+                               (and (= owner :black) (< (:y masu) 8)))
+    (= koma-type :ke)      (or (and (= owner :white) (> (:y masu) 1))
+                               (and (= owner :black) (< (:y masu) 7)))
     :else                  true))
 
 
@@ -179,11 +179,17 @@
 (defn non-nihu-cond [field owner]
   #(nil? (some #{(:x %)} (exist-hu-y-lines field owner))))
 
+(defn not-nihu? [masu field owner]
+  (->> (exist-hu-y-lines field owner)
+       (some #(= (:x masu) %))
+       (nil?)))
+
 (defn putable-masus [field koma-type owner]
-  (cond->> (map second field)
+  (cond->> field
+    true              (map second)
     true              (filter #(nil? (:koma %)))
     true              (filter #(backable? % koma-type owner))
-    (= koma-type :hu) (filter #(non-nihu-cond % owner))))
+    (= koma-type :hu) (filter #(not-nihu? % field owner))))
 
 ;       (let [empty-cond      #(nil? (:koma %))
 ;             unbackable-cond (unbackable-cond koma-type owner)
