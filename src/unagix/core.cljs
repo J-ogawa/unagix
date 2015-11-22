@@ -221,12 +221,14 @@
   (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
 
 (defn highlight! [masus]
-  (let [non-highlight-field (update-values (:field @app-state) #(dissoc % :highlight))
-        highlight-masus (map #(assoc % :highlight true) masus)
-        highlighted-field (reduce #(assoc %1 (xy %2) %2)
-                                  non-highlight-field
-                                  highlight-masus)]
-    (swap! app-state assoc :field highlighted-field)))
+  (swap! app-state assoc :field
+         (->
+           (:field @app-state)
+           (update-values #(dissoc % :highlight))
+           (as-> field
+             (reduce #(assoc %1 (xy %2) %2)
+                     field
+                     (map #(assoc % :highlight true) masus))))))
 
 (defn select! [turn]
   (let [targets
@@ -241,9 +243,9 @@
 
 (defn on-masu-click [data owner]
   (cond
-    (:highlight @data) (operate-next! @data)
+    (:highlight @data)                             (operate-next! @data)
     (= (-> @data :koma :owner) (:turn @app-state)) (select! {:type :move :src @data})
-    :else (neutral!)))
+    :else                                          (neutral!)))
 
 (defn on-stock-koma-click [data owner]
   (select! {:type :put :koma-type data}))
