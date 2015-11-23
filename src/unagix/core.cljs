@@ -268,6 +268,9 @@
   (neutral!)
 
   (if (= (:turn @app-state) :black)
+    (println (nega-max (root-point @app-state) 3)))
+
+  (if (= (:turn @app-state) :black)
     (let [ch (chan)]
       (go
         (while true
@@ -334,45 +337,56 @@
        first))
 
 (defn nega-max [point depth]
-  (loop [targets (children point)]
+  (if (= depth 0)
+    point
+    (loop [targets (children point)
+           candity nil]
+      (if (= (count targets) 0)
+        candity
+        (if (nil? candity)
+          (recur (rest targets) (first targets))
+          (recur (rest targets) (adopt-target (-> point :state :turn) (first targets) candity depth)))))))
+
+(defn adopt-target [owner _new _old depth]
+  (if ((if (= owner :white) >= <)
+       (nega-max _new (dec depth))
+       (nega-max _old (dec depth)))
+    _new
+    _old))
 
 
-
-  (-> (children point)
-       (sort (if (= (-> point :state :turn) :white)
-               #(compare (score (:state %1)) (score (:state %2)))
-               #(compare (score (:state %2)) (score (:state %1)))))
 
 
 
 
 (defn best-choice
   ([app-state]
-   (best-choice app-state (all-turns app-state) nil))
 
-  ([app-state targets candity-tree]
-   (if (= (count targets) 0)
+   (loop [state        app-state
+          turns      (all-turns app-state)
+          candity-tree nil]
+     (if (= (count turns) 0)
      candity-tree
-     (let [target-state (turned-state app-state (first targets))]
+     (let [target-state (turned-state state (first turns))]
        (if (nil? candity-tree)
-         (recur app-state (rest targets) [(first targets) (best-choice target-state (all-turns target-state) nil nil)])
+         (recur state (rest turns) [(first turns) (best-choice target-state (all-turns target-state) nil nil)])
          (let [best-child (best-choice target-state (all-turns target-state) candity-tree nil)]
            (if (< (score best-child) (score (last candity-tree)))
-             (recur app-state (rest targets) [(first targets) best-child])
-             (recur app-state (rest targets) candity-tree)))))))
+             (recur state (rest turns) [(first turns) best-child])
+             (recur state (rest turns) candity-tree))))))))
 
-  ([app-state targets candity-tree candity]
+  ([app-state turns candity-tree candity]
    (swap! aaa inc)
-   (if (= (count targets) 0)
+   (if (= (count turns) 0)
      candity
-     (let [target-state (turned-state app-state (first targets))]
+     (let [target-state (turned-state app-state (first turns))]
        (cond
          (and ((complement nil?) (last candity-tree))
               (<= (score (last candity-tree))
                   (score target-state)))               target-state
          (or (nil? candity)
-             (< (score candity) (score target-state))) (recur app-state (rest targets) candity-tree target-state)
-         :else                                         (recur app-state (rest targets) candity-tree candity))))))
+             (< (score candity) (score target-state))) (recur app-state (rest turns) candity-tree target-state)
+         :else                                         (recur app-state (rest turns) candity-tree candity))))))
 
 (defn score [app-state]
   ;  (+ (move-range-score app-state)
