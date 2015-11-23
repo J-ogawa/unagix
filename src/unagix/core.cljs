@@ -84,6 +84,16 @@
 
 (defn xy [masu] (str (:x masu) (:y masu)))
 
+(defn all-moves [app-state player]
+  (let [turn-masus (filter
+                     #(and ((complement nil?) (:koma %))
+                           (= (-> % :koma :owner) player))
+                     (map second (:field app-state)))]
+    (flatten (map (fn[src] (map
+                             (fn[dst] {:type :move :src src :dst dst})
+                             (movable-masus (:field app-state) src)))
+                  turn-masus))))
+
 (defn check-dst [owner dst]
   (cond
     (nil? dst)                         :out-of-field
@@ -255,7 +265,21 @@
 
 (defn next! [turn]
   (swap! app-state conj (turned-state @app-state turn))
-  (neutral!))
+  (neutral!)
+
+  (if (= (:turn @app-state) :black)
+    (let [ch (chan)]
+      (go
+        (while true
+          (println "1111")
+          (let [_best-choice (<! ch)]
+            (next! (first _best-choice)))))
+      (go
+        (println "2222")
+        (println "send 1")
+        (>! ch (best-choice @app-state))
+        )))
+  )
 
 (defn main []
   (go
@@ -265,6 +289,139 @@
 
 (main)
 
+
+; --- AI ---
+
+(defn all-turns [app-state]
+   (all-moves app-state (:turn app-state)))
+
+(defn root-point [app-state]
+  {:state app-state
+   :tree  []})
+
+(defn children [point]
+  (->>
+    (all-turns (:state point))
+    (map #(hash-map :state (turned-state (:state point) %)
+                    :tree (conj (:tree point) %)))))
+
+(defn deep-score [point depth]
+  (if (> depth 0)
+    (->> (children point)
+         (map #(deep-score % (dec depth)))
+         (sort-by
+         (apply (if (= (-> point :state :turn) :white)
+                  max
+                  min)))
+    (->> point :state score))))
+
+(defn -descendants [point depth]
+  (if (> depth 0)
+    (->> point
+         children
+         (map #(-descendants % (dec depth))))
+    point))
+
+(defn best-choice2 [app-state]
+  (->> (-descendants (root-point app-state) 3)
+       flatten
+       (filter #(< (score (:state %)) (score app-state)))
+       (sort (if (= (:turn app-state) :white)
+               #(compare (score (:state %1)) (score (:state %2)))
+               #(compare (score (:state %2)) (score (:state %1)))))
+       first
+       :tree
+       first))
+
+(defn nega-max [point depth]
+  (loop [targets (children point)]
+
+
+
+  (-> (children point)
+       (sort (if (= (-> point :state :turn) :white)
+               #(compare (score (:state %1)) (score (:state %2)))
+               #(compare (score (:state %2)) (score (:state %1)))))
+
+
+
+
+(defn best-choice
+  ([app-state]
+   (best-choice app-state (all-turns app-state) nil))
+
+  ([app-state targets candity-tree]
+   (if (= (count targets) 0)
+     candity-tree
+     (let [target-state (turned-state app-state (first targets))]
+       (if (nil? candity-tree)
+         (recur app-state (rest targets) [(first targets) (best-choice target-state (all-turns target-state) nil nil)])
+         (let [best-child (best-choice target-state (all-turns target-state) candity-tree nil)]
+           (if (< (score best-child) (score (last candity-tree)))
+             (recur app-state (rest targets) [(first targets) best-child])
+             (recur app-state (rest targets) candity-tree)))))))
+
+  ([app-state targets candity-tree candity]
+   (swap! aaa inc)
+   (if (= (count targets) 0)
+     candity
+     (let [target-state (turned-state app-state (first targets))]
+       (cond
+         (and ((complement nil?) (last candity-tree))
+              (<= (score (last candity-tree))
+                  (score target-state)))               target-state
+         (or (nil? candity)
+             (< (score candity) (score target-state))) (recur app-state (rest targets) candity-tree target-state)
+         :else                                         (recur app-state (rest targets) candity-tree candity))))))
+
+(defn score [app-state]
+  ;  (+ (move-range-score app-state)
+  ;     (field-unit-score app-state)))
+  (+
+   (field-unit-score app-state)
+   (stock-unit-score app-state)))
+;  (field-unit-score app-state))
+
+(defn move-range-score [app-state]
+  (- (count (all-turns app-state :white)) (count (all-turns app-state :black))))
+
+(defn field-unit-score [app-state]
+  (reduce + (map #(koma-score %)
+                 (filter #((complement nil?) %)
+                         (map #(:koma %) (vals (:field app-state)))))))
+
+(defn stock-unit-score [app-state]
+  (->>
+    app-state
+    :stock
+    (map #(hash-map (first %) (second %))) ; {:black {:hu 1 :ky 2 ...}} {:white {:hu 1 ...}}
+    (map #(+ (* (owner-score first %) (type-score (-> % second first)) (-> % second second)) 4))
+    (reduce +)))
+
+(def aaa
+  (atom 0))
+
+(defn koma-score [koma]
+  (*
+   (type-score (:type koma))
+   (owner-score (:owner koma))))
+
+(defn type-score [_type]
+  ({:hu 4 :ke 6 :gi 9 :ki 10 :gy 10000 :ka 15 :hi 17 :nhu 11 :nke 11 :ngi 11} _type))
+
+(defn owner-score [owner]
+  ({:white 1 :black -1} owner))
+
+(defn print-des []
+  (print "---ndants")
+  (print (root-point @app-state))
+  (print (-descendants (root-point @app-state) 1))
+  (print "+++ndants"))
+
+(defn print-best2 []
+  (println "---best2")
+  (println (best-choice2 @app-state))
+  (println "+++best2"))
 
 ; --- virtual DOM ---
 
