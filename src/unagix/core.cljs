@@ -343,17 +343,21 @@
            candity nil]
       (if (= (count targets) 0)
         candity
-        (if (nil? candity)
-          (recur (rest targets) (first targets))
-          (recur (rest targets) (adopt-target (-> point :state :turn) (first targets) candity depth)))))))
+        (recur (rest targets) (if (nil? candity)
+                                (first targets)
+                                (adopt-one (-> point :state :turn)
+                                           (nega-max (first targets) (dec depth))
+                                           (nega-max candity         (dec depth)))))))))
 
-(defn adopt-target [owner _new _old depth]
-  (if ((if (= owner :white) >= <)
-       (nega-max _new (dec depth))
-       (nega-max _old (dec depth)))
-    _new
-    _old))
+(defn adopt-one [owner a1 a2]
+  (cond (nil? a1) a2
+        (nil? a2) a1
+        :else     (if ((comparison owner) (score (:state a1)) (score (:state a2)))
+                    a1
+                    a2)))
 
+(defn comparison [owner]
+  (if (= owner :white) >= <))
 
 
 
