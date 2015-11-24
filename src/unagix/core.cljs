@@ -47,7 +47,7 @@
   (atom
     {:field (field-data def-koma-mapping)
      :stock {:black {} :white {}} ; {:hu 1 :ky 1}
-     :turn :white}))
+     :phasing :white}))
 
 
 ; --- move ---
@@ -181,13 +181,13 @@
     true           (update :field #(conj %
                                          {(xy src) (dissoc src :koma)}
                                          {(xy dst) (assoc dst :koma (:koma src))}))
-    true           (update :turn next-player)))
+    true           (update :phasing next-player)))
 
 (defn put-state [app-state koma-type dst]
   (-> app-state
-      (update-in [:stock (:turn app-state) koma-type] dec)
-      (update :field #(conj % {(xy dst) {:x (:x dst) :y (:y dst) :koma {:type koma-type :owner (:turn app-state)}}}))
-      (update :turn next-player)))
+      (update-in [:stock (:phasing app-state) koma-type] dec)
+      (update :field #(conj % {(xy dst) {:x (:x dst) :y (:y dst) :koma {:type koma-type :owner (:phasing app-state)}}}))
+      (update :phasing next-player)))
 
 (defn turned-state [app-state turn]
   (cond-> app-state
@@ -244,7 +244,7 @@
   (let [targets
         (cond
           (= (:type turn) :move) (movable-masus (:field @app-state) (:src turn))
-          (= (:type turn) :put) (putable-masus (:field @app-state) (:koma-type turn) (:turn @app-state)))]
+          (= (:type turn) :put) (putable-masus (:field @app-state) (:koma-type turn) (:phasing @app-state)))]
     (highlight! targets)
     (swap! app-state assoc :selected turn)))
 
@@ -254,7 +254,7 @@
 (defn on-masu-click [data owner]
   (cond
     (:highlight @data)                             (operate-next! @data)
-    (= (-> @data :koma :owner) (:turn @app-state)) (select! {:type :move :src @data})
+    (= (-> @data :koma :owner) (:phasing @app-state)) (select! {:type :move :src @data})
     :else                                          (neutral!)))
 
 (defn on-stock-koma-click [data owner]
@@ -267,21 +267,21 @@
   (swap! app-state conj (turned-state @app-state turn))
   (neutral!)
 
-  (if (= (:turn @app-state) :black)
-    (println (nega-max (root-point @app-state) 3)))
+ ; (if (= (:phasing @app-state) :black)
+ ;   (println (nega-max (root-point @app-state) 3)))
 
-  (if (= (:turn @app-state) :black)
-    (let [ch (chan)]
-      (go
-        (while true
-          (println "1111")
-          (let [_best-choice (<! ch)]
-            (next! (first _best-choice)))))
-      (go
-        (println "2222")
-        (println "send 1")
-        (>! ch (best-choice @app-state))
-        )))
+ ; (if (= (:phasing @app-state) :black)
+ ;   (let [ch (chan)]
+ ;     (go
+ ;       (while true
+ ;         (println "1111")
+ ;         (let [_best-choice (<! ch)]
+ ;           (next! (first _best-choice)))))
+ ;     (go
+ ;       (println "2222")
+ ;       (println "send 1")
+ ;       (>! ch (best-choice @app-state))
+ ;       )))
   )
 
 (defn main []
@@ -296,7 +296,7 @@
 ; --- AI ---
 
 (defn all-turns [app-state]
-   (all-moves app-state (:turn app-state)))
+   (all-moves app-state (:phasing app-state)))
 
 (defn root-point [app-state]
   {:state app-state
@@ -313,7 +313,7 @@
     (->> (children point)
          (map #(deep-score % (dec depth)))
          (sort-by
-         (apply (if (= (-> point :state :turn) :white)
+         (apply (if (= (-> point :state :phasing) :white)
                   max
                   min)))
     (->> point :state score))))
@@ -329,7 +329,7 @@
   (->> (-descendants (root-point app-state) 3)
        flatten
        (filter #(< (score (:state %)) (score app-state)))
-       (sort (if (= (:turn app-state) :white)
+       (sort (if (= (:phasing app-state) :white)
                #(compare (score (:state %1)) (score (:state %2)))
                #(compare (score (:state %2)) (score (:state %1)))))
        first
@@ -345,7 +345,7 @@
         candity
         (recur (rest targets) (if (nil? candity)
                                 (first targets)
-                                (adopt-one (-> point :state :turn)
+                                (adopt-one (-> point :state :phasing)
                                            (nega-max (first targets) (dec depth))
                                            (nega-max candity         (dec depth)))))))))
 
