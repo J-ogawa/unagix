@@ -201,26 +201,28 @@
 (def input-chan
   (chan))
 
-(defn promote-unless-selected-movable! [dst]
-  (let [selected (:selected @app-state)
-        _type    (-> selected :src :koma :type)]
-    (if
+(defn promotable? [selected dst]
+  (and
+    (= :move (:type selected))
+    (enemy-area? (:y dst) (-> selected :src :koma :owner))
+    (= -1 (.indexOf (str (-> selected :src :koma :type)) "n"))))
+
+(defn workable-after? [selected dst]
+  (let [_type (-> selected :src :koma :type)]
+    (and
       (some #(= _type %) [:hu :ky :ke])
       (let [y-move (* (last (direction (-> selected :src :koma :owner)))
                       (-> basic-type-vec _type vals first first last))]
-        (not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
-          )))))
+        (field-contains? {:x 0 :y (+ (:y dst) y-move)})))))
 
-(defn promote-if-owner-want-to! [dst]
-  (and
-    (= :move (-> @app-state :selected :type))
-    (= -1 (.indexOf (str (-> @app-state :selected :src :koma :type)) "n"))
-    (enemy-area? (:y dst) (-> @app-state :selected :src :koma :owner))
-    (js/confirm "成りますか?"))
-  )
+(defn promote [selected dst]
+  (and (promotable? selected dst)
+       (or (not (workable-after? selected dst)) (js/confirm "成りますか?"))))
 
 (defn operate-next! [dst]
-  (put! input-chan (conj (:selected @app-state) {:dst dst :promote (or (promote-unless-selected-movable! dst) (promote-if-owner-want-to! dst))})))
+  (put! input-chan (-> (:selected @app-state)
+                       (assoc :promote (promote selected dst))
+                       (assoc :dst dst))))
 
 (defn update-values [m f & args]
   (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
