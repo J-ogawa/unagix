@@ -85,14 +85,17 @@
 (defn xy [masu] (str (:x masu) (:y masu)))
 
 (defn all-moves [app-state player]
-  (let [turn-masus (filter
-                     #(and ((complement nil?) (:koma %))
-                           (= (-> % :koma :owner) player))
-                     (map second (:field app-state)))]
-    (flatten (map (fn[src] (map
-                             (fn[dst] {:type :move :src src :dst dst})
-                             (movable-masus (:field app-state) src)))
-                  turn-masus))))
+  (->> app-state
+       :field
+       (map second)
+       (filter #(and ((complement nil?) (:koma %))
+                     (= (-> % :koma :owner) player)))
+       (map #(hash-map :src % :dst (movable-masus (:field app-state) %) :type :move))))
+
+;    (flatten (map (fn[src] (map
+;                             (fn[dst] {:type :move :src src :dst dst})
+;                             (movable-masus (:field app-state) src)))
+;                  turn-masus))))
 
 (defn check-dst [owner dst]
   (cond
