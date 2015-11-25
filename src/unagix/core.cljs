@@ -182,7 +182,6 @@
                                            {(xy src) (dissoc src :koma)}
                                            {(xy dst) (assoc dst :koma (:koma src))}))
     (= promote true) (update-in [:field (xy dst) :koma :type] #(keyword (str "n" (name %))))
-    (= promote true) (assoc :promote false) ; fix me
     true             (update :phasing next-player)))
 
 (defn put-state [app-state koma-type dst]
@@ -193,7 +192,7 @@
 
 (defn turned-state [app-state turn]
   (cond-> app-state
-    (= (:type turn) :move) (moved-state (:src turn) (:dst turn) (:promote app-state))
+    (= (:type turn) :move) (moved-state (:src turn) (:dst turn) (:promote turn))
     (= (:type turn) :put)  (put-state (:koma-type turn) (:dst turn))))
 
 
@@ -212,22 +211,19 @@
       (some #(= _type %) [:hu :ky :ke])
       (let [y-move (* (last (direction (-> selected :src :koma :owner)))
                       (-> basic-type-vec _type vals first first last))]
-        (if-not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
-          (promote-selected-koma!))))))
+        (not (field-contains? {:x 0 :y (+ (:y dst) y-move)})
+          )))))
 
 (defn promote-if-owner-want-to! [dst]
-  (if
-    (and
-      (= :move (-> @app-state :selected :type))
-      (not= (:promote @app-state) true)
-      (enemy-area? (:y dst) (-> @app-state :selected :src :koma :owner))
-      (js/confirm "成りますか?"))
-    (promote-selected-koma!)))
+  (and
+    (= :move (-> @app-state :selected :type))
+    (not= (:promote @app-state) true)
+    (enemy-area? (:y dst) (-> @app-state :selected :src :koma :owner))
+    (js/confirm "成りますか?"))
+  )
 
 (defn operate-next! [dst]
-  (promote-unless-selected-movable! dst)
-  (promote-if-owner-want-to! dst)
-  (put! input-chan (conj (:selected @app-state) {:dst dst})))
+  (put! input-chan (conj (:selected @app-state) {:dst dst :promote (or (promote-unless-selected-movable! dst) (promote-if-owner-want-to! dst))})))
 
 (defn update-values [m f & args]
   (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
