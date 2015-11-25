@@ -175,13 +175,15 @@
              (inc ((clojure.set/map-invert players) player))
              2)))
 
-(defn moved-state [app-state src dst]
+(defn moved-state [app-state src dst promote]
   (cond-> app-state
-    (-> dst :koma) (update-in [:stock (-> src :koma :owner) (-> dst :koma :type)] inc)
-    true           (update :field #(conj %
-                                         {(xy src) (dissoc src :koma)}
-                                         {(xy dst) (assoc dst :koma (:koma src))}))
-    true           (update :phasing next-player)))
+    (-> dst :koma)   (update-in [:stock (-> src :koma :owner) (-> dst :koma :type)] inc)
+    true             (update :field #(conj %
+                                           {(xy src) (dissoc src :koma)}
+                                           {(xy dst) (assoc dst :koma (:koma src))}))
+    (= promote true) (update-in [:field (xy dst) :koma :type] #(keyword (str "n" (name %))))
+    (= promote true) (assoc :promote false) ; fix me
+    true             (update :phasing next-player)))
 
 (defn put-state [app-state koma-type dst]
   (-> app-state
@@ -191,7 +193,7 @@
 
 (defn turned-state [app-state turn]
   (cond-> app-state
-    (= (:type turn) :move) (moved-state (:src turn) (:dst turn))
+    (= (:type turn) :move) (moved-state (:src turn) (:dst turn) (:promote app-state))
     (= (:type turn) :put)  (put-state (:koma-type turn) (:dst turn))))
 
 
@@ -201,7 +203,7 @@
   (chan))
 
 (defn promote-selected-koma! []
-  (swap! app-state update-in [:selected :src :koma :type] #(keyword (str "n" (name %)))))
+  (swap! app-state assoc :promote true)) ; fix me
 
 (defn promote-unless-selected-movable! [dst]
   (let [selected (:selected @app-state)
@@ -217,7 +219,7 @@
   (if
     (and
       (= :move (-> @app-state :selected :type))
-      (= -1 (.indexOf (str (-> @app-state :selected :src :koma :type)) "n"))
+      (not= (:promote @app-state) true)
       (enemy-area? (:y dst) (-> @app-state :selected :src :koma :owner))
       (js/confirm "成りますか?"))
     (promote-selected-koma!)))
