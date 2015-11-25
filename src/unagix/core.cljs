@@ -201,9 +201,6 @@
 (def input-chan
   (chan))
 
-(defn promote-selected-koma! []
-  (swap! app-state assoc :promote true)) ; fix me
-
 (defn promote-unless-selected-movable! [dst]
   (let [selected (:selected @app-state)
         _type    (-> selected :src :koma :type)]
@@ -217,7 +214,7 @@
 (defn promote-if-owner-want-to! [dst]
   (and
     (= :move (-> @app-state :selected :type))
-    (not= (:promote @app-state) true)
+    (= -1 (.indexOf (str (-> @app-state :selected :src :koma :type)) "n"))
     (enemy-area? (:y dst) (-> @app-state :selected :src :koma :owner))
     (js/confirm "成りますか?"))
   )
