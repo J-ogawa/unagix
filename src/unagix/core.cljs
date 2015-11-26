@@ -308,16 +308,64 @@
        all-turns
        (map #(turned-state state %))))
 
-(defn nega-max [state depth]
+(defn nega-max [state depth border]
+;  (println "-- nega-max --")
+;  (println (str "depth: "depth))
+;  (println (str "border: " border))
+;  (println "--------------")
   (if (= depth 0)
     state
-    (loop [targets (children state)
-           candity nil]
-      (if (= (count targets) 0)
-        candity
-        (recur (rest targets) (adopt-one (:phasing state)
-                                         (nega-max (first targets) (dec depth))
-                                         (nega-max candity         (dec depth))))))))
+    (loop [_children  (children state)
+           best-end nil]
+
+      (let [end-of-first (nega-max (first _children) (dec depth) best-end)]
+   (swap! aaa inc)
+        (cond
+          (= (count _children) 0) best-end
+          (and
+            (= depth 1)
+            (not (nil? border))
+            ((comparison (:phasing state)) (score border) (score end-of-first))) border
+          :else (recur (rest _children)
+                       (if (and (not (nil? best-end))
+                                ((comparison (:phasing state)) (score best-end) (score end-of-first)))
+                         best-end
+                         end-of-first)))))))
+
+;          (nil? best-child) (recur (rest targets) end-of-first)
+;          ((comparison (:phasing state)) (score end-of-first) (score best-child))
+;          (recur (rest _children) end-of-first)
+;          ))))
+
+;      (if (= (count targets) 0)
+;        candity
+;(let [target (first targets)]
+;(cond
+;
+;
+;
+;
+;  (if
+;    (and candity )
+;    candity
+;    (recur
+;
+;
+;
+;
+;        (if (and candity
+;                 ((comparison (:phasing state)) (score (nega-max candity)) (score (nega-max (first targets)))))
+;          candity
+;          (recur (rest targets) (first targets)))))))
+;
+;
+;
+;
+;
+
+;        (recur (rest targets) (adopt-one (:phasing state)
+;                                         (nega-max (first targets) (dec depth))
+;                                         (nega-max candity         (dec depth))))))))
 
 (defn adopt-one [owner a1 a2]
   (cond (nil? a1) a2
@@ -327,7 +375,7 @@
                     a2)))
 
 (defn comparison [owner]
-  (if (= owner :white) >= <))
+  (if (= owner :white) >= <=))
 
 
 
@@ -362,10 +410,10 @@
          :else                                         (recur app-state (rest turns) candity-tree candity))))))
 
 (defn score [app-state]
-   (swap! aaa inc)
   ;  (+ (move-range-score app-state)
   ;     (field-unit-score app-state)))
   (+
+   (move-range-score app-state)
    (field-unit-score app-state)
   ; (stock-unit-score app-state)
    ))
@@ -412,7 +460,7 @@
   (println (best-choice2 @app-state))
   (println "+++best2"))
 
-(print (nega-max @app-state 2))
+(print (nega-max @app-state 3 nil))
 (print @aaa)
 ; --- virtual DOM ---
 
