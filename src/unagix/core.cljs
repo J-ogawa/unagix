@@ -2,8 +2,6 @@
   (:require
     [om.core :as om :include-macros true]
     [om.dom :as dom :include-macros true]
-    [om.core :as om :include-macros true]
-    [om.dom :as dom :include-macros true]
     [cljs.core.async :refer [timeout put! chan <!]]
     [clojure.data :as data]
     [clojure.string :as string])
@@ -87,11 +85,10 @@
 
 (defn all-moves [app-state player]
   (let [srcs (->> app-state
-       :field
-       (map second)
-       (filter #(and ((complement nil?) (:koma %))
-                     (= (-> % :koma :owner) player))))]
-
+                  :field
+                  (map second)
+                  (filter #(and ((complement nil?) (:koma %))
+                                (= (-> % :koma :owner) player))))]
     (flatten (map (fn[src] (map
                              (fn[dst] {:type :move :src src :dst dst})
                              (movable-masus (:field app-state) src)))
@@ -164,10 +161,10 @@
 
 (defn putable-masus [field koma-type owner]
   (->> field
-    (map second)
-    (filter #(nil? (:koma %)))
-    (filter #(movable? % koma-type owner))
-    (filter #(not-nihu? % field koma-type owner))))
+       (map second)
+       (filter #(nil? (:koma %)))
+       (filter #(movable? % koma-type owner))
+       (filter #(not-nihu? % field koma-type owner))))
 
 ; --- state after turn ---
 
@@ -218,8 +215,7 @@
       (not (some #(= _type %) [:hu :ky :ke]))
       (let [y-move (* (last (direction (-> selected :src :koma :owner)))
                       (-> basic-type-vec _type vals first first last))]
-        (field-contains? {:x 0 :y (+ (:y dst) y-move)}))
-      )))
+        (field-contains? {:x 0 :y (+ (:y dst) y-move)})))))
 
 (defn promote [selected dst]
   (and (promotable? selected dst)
@@ -272,8 +268,8 @@
 
   (println @app-state)
 
- ; (if (= (:phasing @app-state) :black)
- ;   (println (nega-max (root-point @app-state) 3)))
+  ; (if (= (:phasing @app-state) :black)
+  ;   (println (nega-max (root-point @app-state) 3)))
 
   (if (= (:phasing @app-state) :black)
     (let [ch (chan)]
@@ -285,7 +281,7 @@
       (go
         (println "2222")
         (println "send 1")
-        (>! ch (-> (nega-max @app-state 3 nil)
+        (>! ch (-> (nega-max @app-state 2 nil)
                    :history
                    (get (count (:history @app-state)))))
         )))
@@ -303,121 +299,72 @@
 ; --- AI ---
 
 (defn all-turns [app-state]
-   (all-moves app-state (:phasing app-state)))
+  (all-moves app-state (:phasing app-state)))
 
 (defn children [state]
   (->> state
        all-turns
        (map #(turned-state state %))))
 
-(defn nega-max [state depth border]
-;  (println "-- nega-max --")
-;  (println (str "depth: "depth))
-;  (println (str "border: " border))
-;  (println "--------------")
+; (defn nega-max [state depth border]
+;   (if (= depth 0)
+;     state
+;     (loop [_children (children state)
+;            best-end nil]
+;
+;       (let [end-of-first (nega-max (first _children) (dec depth) best-end)]
+;         (cond
+;           (= (count _children) 0) best-end
+;           (and
+;             (= depth 1)
+;             (not (nil? border))
+;             ((comparison (:phasing state)) (score border) (score end-of-first))) border
+;           :else (recur (rest _children)
+;                        (if (and (not (nil? best-end))
+;                                 ((comparison (:phasing state)) (score best-end) (score end-of-first)))
+;                          best-end
+;                          end-of-first)))))))
+
+(defn nega-max [state depth]
   (if (= depth 0)
     state
-    (loop [_children  (children state)
+    (loop [_children (children state)
            best-end nil]
 
       (let [end-of-first (nega-max (first _children) (dec depth) best-end)]
-   (swap! aaa inc)
         (cond
           (= (count _children) 0) best-end
           (and
             (= depth 1)
-            (not (nil? border))
-            ((comparison (:phasing state)) (score border) (score end-of-first))) border
-          :else (recur (rest _children)
-                       (if (and (not (nil? best-end))
-                                ((comparison (:phasing state)) (score best-end) (score end-of-first)))
-                         best-end
-                         end-of-first)))))))
+            (not (nil? best-end))
+            ((comparison (:phasing state)) (score best-end) (score end-of-first))) best-end
+          :else (recur (rest _children) end-of-first))))))
 
-;          (nil? best-child) (recur (rest targets) end-of-first)
-;          ((comparison (:phasing state)) (score end-of-first) (score best-child))
-;          (recur (rest _children) end-of-first)
-;          ))))
+(defn nega-max2 [state depth]
+  (if (= depth 0)
+    state
+    (cond->> (children state)
+         true (map #(nega-max2 % (dec depth)))
+         true (sort #(compare (score %1) (score %2)))
+         (= (:phasing state) :white) (last)
+         (= (:phasing state) :black) (first))))
 
-;      (if (= (count targets) 0)
-;        candity
-;(let [target (first targets)]
-;(cond
-;
-;
-;
-;
-;  (if
-;    (and candity )
-;    candity
-;    (recur
-;
-;
-;
-;
-;        (if (and candity
-;                 ((comparison (:phasing state)) (score (nega-max candity)) (score (nega-max (first targets)))))
-;          candity
-;          (recur (rest targets) (first targets)))))))
-;
-;
-;
-;
-;
 
-;        (recur (rest targets) (adopt-one (:phasing state)
-;                                         (nega-max (first targets) (dec depth))
-;                                         (nega-max candity         (dec depth))))))))
-
-(defn adopt-one [owner a1 a2]
-  (cond (nil? a1) a2
-        (nil? a2) a1
-        :else     (if ((comparison owner) (score a1) (score a2))
-                    a1
-                    a2)))
+(defn adopt [owner a b]
+  (if ((comparison (:phasing state)) (score a) (score b))
+    a
+    b))
 
 (defn comparison [owner]
   (if (= owner :white) >= <=))
-
-
-
-
-
-(defn best-choice
-  ([app-state]
-
-   (loop [state        app-state
-          turns      (all-turns app-state)
-          candity-tree nil]
-     (if (= (count turns) 0)
-     candity-tree
-     (let [target-state (turned-state state (first turns))]
-       (if (nil? candity-tree)
-         (recur state (rest turns) [(first turns) (best-choice target-state (all-turns target-state) nil nil)])
-         (let [best-child (best-choice target-state (all-turns target-state) candity-tree nil)]
-           (if (< (score best-child) (score (last candity-tree)))
-             (recur state (rest turns) [(first turns) best-child])
-             (recur state (rest turns) candity-tree))))))))
-
-  ([app-state turns candity-tree candity]
-   (if (= (count turns) 0)
-     candity
-     (let [target-state (turned-state app-state (first turns))]
-       (cond
-         (and ((complement nil?) (last candity-tree))
-              (<= (score (last candity-tree))
-                  (score target-state)))               target-state
-         (or (nil? candity)
-             (< (score candity) (score target-state))) (recur app-state (rest turns) candity-tree target-state)
-         :else                                         (recur app-state (rest turns) candity-tree candity))))))
 
 (defn score [app-state]
   ;  (+ (move-range-score app-state)
   ;     (field-unit-score app-state)))
   (+
-  ; (move-range-score app-state)
+ ;  (move-range-score app-state)
    (field-unit-score app-state)
-  ; (stock-unit-score app-state)
+   ; (stock-unit-score app-state)
    ))
 ;  (field-unit-score app-state))
 
@@ -446,7 +393,7 @@
    (owner-score (:owner koma))))
 
 (defn type-score [_type]
-  ({:hu 4 :ke 6 :gi 9 :ki 10 :gy 10000 :ka 15 :hi 17 :nhu 11 :nke 11 :ngi 11} _type))
+  ({:hu 4 :ky 5 :ke 6 :gi 9 :ki 10 :gy 10000 :ka 15 :hi 17 :nhu 11 :nky 11 :nke 11 :ngi 11 :nka 30 :nhi 35} _type))
 
 (defn owner-score [owner]
   ({:white 1 :black -1} owner))
