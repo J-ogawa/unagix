@@ -275,18 +275,20 @@
  ; (if (= (:phasing @app-state) :black)
  ;   (println (nega-max (root-point @app-state) 3)))
 
- ; (if (= (:phasing @app-state) :black)
- ;   (let [ch (chan)]
- ;     (go
- ;       (while true
- ;         (println "1111")
- ;         (let [_best-choice (<! ch)]
- ;           (next! (first _best-choice)))))
- ;     (go
- ;       (println "2222")
- ;       (println "send 1")
- ;       (>! ch (best-choice @app-state))
- ;       )))
+  (if (= (:phasing @app-state) :black)
+    (let [ch (chan)]
+      (go
+        (while true
+          (println "1111")
+          (let [_best-choice (<! ch)]
+            (next! _best-choice))))
+      (go
+        (println "2222")
+        (println "send 1")
+        (>! ch (-> (nega-max @app-state 3 nil)
+                   :history
+                   (get (count (:history @app-state)))))
+        )))
   )
 
 (defn main []
@@ -413,7 +415,7 @@
   ;  (+ (move-range-score app-state)
   ;     (field-unit-score app-state)))
   (+
-   (move-range-score app-state)
+  ; (move-range-score app-state)
    (field-unit-score app-state)
   ; (stock-unit-score app-state)
    ))
@@ -460,8 +462,8 @@
   (println (best-choice2 @app-state))
   (println "+++best2"))
 
-(print (nega-max @app-state 3 nil))
-(print @aaa)
+;(print (nega-max @app-state 3 nil))
+;(print @aaa)
 ; --- virtual DOM ---
 
 (defn masu [data owner]
@@ -529,10 +531,9 @@
     om/IRender
     (render [self]
       (dom/div #js {:className "field"}
-;               (om/build side {:role :black :stock (-> app :stock :black)})
-;               (om/build center (:field app))
-;               (om/build side {:role :white :stock (-> app :stock :white)})))))
-               ))))
+               (om/build side {:role :black :stock (-> app :stock :black)})
+               (om/build center (:field app))
+               (om/build side {:role :white :stock (-> app :stock :white)})))))
 
 (om/root
   container
