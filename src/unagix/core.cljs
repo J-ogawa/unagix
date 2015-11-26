@@ -47,7 +47,8 @@
   (atom
     {:field (field-data def-koma-mapping)
      :stock {:black {} :white {}} ; {:hu 1 :ky 1}
-     :phasing :white}))
+     :phasing :white
+     :history []}))
 
 
 ; --- move ---
@@ -196,7 +197,9 @@
 (defn turned-state [app-state turn]
   (cond-> app-state
     (= (:type turn) :move) (moved-state (:src turn) (:dst turn) (:promote turn))
-    (= (:type turn) :put)  (put-state (:koma-type turn) (:dst turn))))
+    (= (:type turn) :put)  (put-state (:koma-type turn) (:dst turn))
+    true                   (update :history conj turn)
+    true                   (dissoc :selected)))
 
 
 ; --- user action ---
@@ -212,11 +215,12 @@
 
 (defn workable-after? [selected dst]
   (let [_type (-> selected :src :koma :type)]
-    (and
-      (some #(= _type %) [:hu :ky :ke])
+    (or
+      (not (some #(= _type %) [:hu :ky :ke]))
       (let [y-move (* (last (direction (-> selected :src :koma :owner)))
                       (-> basic-type-vec _type vals first first last))]
-        (field-contains? {:x 0 :y (+ (:y dst) y-move)})))))
+        (field-contains? {:x 0 :y (+ (:y dst) y-move)}))
+      )))
 
 (defn promote [selected dst]
   (and (promotable? selected dst)
@@ -224,7 +228,7 @@
 
 (defn operate-next! [dst]
   (put! input-chan (-> (:selected @app-state)
-                       (assoc :promote (promote selected dst))
+                       (assoc :promote (promote (:selected @app-state) dst))
                        (assoc :dst dst))))
 
 (defn update-values [m f & args]
@@ -264,8 +268,10 @@
 ; --- game process ---
 
 (defn next! [turn]
-  (swap! app-state conj (turned-state @app-state turn))
+  (reset! app-state (turned-state @app-state turn))
   (neutral!)
+
+  (println @app-state)
 
  ; (if (= (:phasing @app-state) :black)
  ;   (println (nega-max (root-point @app-state) 3)))
