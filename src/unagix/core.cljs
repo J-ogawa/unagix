@@ -86,17 +86,16 @@
 (defn xy [masu] (str (:x masu) (:y masu)))
 
 (defn all-moves [app-state player]
-  (->> app-state
+  (let [srcs (->> app-state
        :field
        (map second)
        (filter #(and ((complement nil?) (:koma %))
-                     (= (-> % :koma :owner) player)))
-       (map #(hash-map :src % :dst (movable-masus (:field app-state) %) :type :move))))
+                     (= (-> % :koma :owner) player))))]
 
-;    (flatten (map (fn[src] (map
-;                             (fn[dst] {:type :move :src src :dst dst})
-;                             (movable-masus (:field app-state) src)))
-;                  turn-masus))))
+    (flatten (map (fn[src] (map
+                             (fn[dst] {:type :move :src src :dst dst})
+                             (movable-masus (:field app-state) src)))
+                  srcs))))
 
 (defn check-dst [owner dst]
   (cond
@@ -304,61 +303,26 @@
 (defn all-turns [app-state]
    (all-moves app-state (:phasing app-state)))
 
-(defn root-point [app-state]
-  {:state app-state
-   :tree  []})
+(defn children [state]
+  (->> state
+       all-turns
+       (map #(turned-state state %))))
 
-(defn children [point]
-  (->>
-    (all-turns (:state point))
-    (map #(hash-map :state (turned-state (:state point) %)
-                    :tree (conj (:tree point) %)))))
-
-(defn deep-score [point depth]
-  (if (> depth 0)
-    (->> (children point)
-         (map #(deep-score % (dec depth)))
-         (sort-by
-         (apply (if (= (-> point :state :phasing) :white)
-                  max
-                  min)))
-    (->> point :state score))))
-
-(defn -descendants [point depth]
-  (if (> depth 0)
-    (->> point
-         children
-         (map #(-descendants % (dec depth))))
-    point))
-
-(defn best-choice2 [app-state]
-  (->> (-descendants (root-point app-state) 3)
-       flatten
-       (filter #(< (score (:state %)) (score app-state)))
-       (sort (if (= (:phasing app-state) :white)
-               #(compare (score (:state %1)) (score (:state %2)))
-               #(compare (score (:state %2)) (score (:state %1)))))
-       first
-       :tree
-       first))
-
-(defn nega-max [point depth]
+(defn nega-max [state depth]
   (if (= depth 0)
-    point
-    (loop [targets (children point)
+    state
+    (loop [targets (children state)
            candity nil]
       (if (= (count targets) 0)
         candity
-        (recur (rest targets) (if (nil? candity)
-                                (first targets)
-                                (adopt-one (-> point :state :phasing)
-                                           (nega-max (first targets) (dec depth))
-                                           (nega-max candity         (dec depth)))))))))
+        (recur (rest targets) (adopt-one (:phasing state)
+                                         (nega-max (first targets) (dec depth))
+                                         (nega-max candity         (dec depth))))))))
 
 (defn adopt-one [owner a1 a2]
   (cond (nil? a1) a2
         (nil? a2) a1
-        :else     (if ((comparison owner) (score (:state a1)) (score (:state a2)))
+        :else     (if ((comparison owner) (score a1) (score a2))
                     a1
                     a2)))
 
@@ -386,7 +350,6 @@
              (recur state (rest turns) candity-tree))))))))
 
   ([app-state turns candity-tree candity]
-   (swap! aaa inc)
    (if (= (count turns) 0)
      candity
      (let [target-state (turned-state app-state (first turns))]
@@ -399,11 +362,13 @@
          :else                                         (recur app-state (rest turns) candity-tree candity))))))
 
 (defn score [app-state]
+   (swap! aaa inc)
   ;  (+ (move-range-score app-state)
   ;     (field-unit-score app-state)))
   (+
    (field-unit-score app-state)
-   (stock-unit-score app-state)))
+  ; (stock-unit-score app-state)
+   ))
 ;  (field-unit-score app-state))
 
 (defn move-range-score [app-state]
@@ -447,6 +412,8 @@
   (println (best-choice2 @app-state))
   (println "+++best2"))
 
+(print (nega-max @app-state 2))
+(print @aaa)
 ; --- virtual DOM ---
 
 (defn masu [data owner]
@@ -514,9 +481,10 @@
     om/IRender
     (render [self]
       (dom/div #js {:className "field"}
-               (om/build side {:role :black :stock (-> app :stock :black)})
-               (om/build center (:field app))
-               (om/build side {:role :white :stock (-> app :stock :white)})))))
+;               (om/build side {:role :black :stock (-> app :stock :black)})
+;               (om/build center (:field app))
+;               (om/build side {:role :white :stock (-> app :stock :white)})))))
+               ))))
 
 (om/root
   container
