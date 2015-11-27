@@ -281,7 +281,7 @@
       (go
         (println "2222")
         (println "send 1")
-        (>! ch (-> (nega-max @app-state 2 nil)
+        (>! ch (-> (nega-max2 @app-state 2)
                    :history
                    (get (count (:history @app-state)))))
         )))
@@ -306,39 +306,39 @@
        all-turns
        (map #(turned-state state %))))
 
-; (defn nega-max [state depth border]
-;   (if (= depth 0)
-;     state
-;     (loop [_children (children state)
-;            best-end nil]
+ (defn nega-max [state depth border]
+   (if (= depth 0)
+     state
+     (loop [_children (children state)
+            best-end nil]
+
+       (let [end-of-first (nega-max (first _children) (dec depth) best-end)]
+         (cond
+           (= (count _children) 0) best-end
+           (and
+      ;       (= depth 1)
+             (not (nil? border))
+             ((comparison (:phasing state)) (score border) (score end-of-first))) border
+           :else (recur (rest _children)
+                        (if (and (not (nil? best-end))
+                                 ((comparison (:phasing state)) (score best-end) (score end-of-first)))
+                          best-end
+                          end-of-first)))))))
+
+;(defn nega-max [state depth]
+;  (if (= depth 0)
+;    state
+;    (loop [_children (children state)
+;           best-end nil]
 ;
-;       (let [end-of-first (nega-max (first _children) (dec depth) best-end)]
-;         (cond
-;           (= (count _children) 0) best-end
-;           (and
-;             (= depth 1)
-;             (not (nil? border))
-;             ((comparison (:phasing state)) (score border) (score end-of-first))) border
-;           :else (recur (rest _children)
-;                        (if (and (not (nil? best-end))
-;                                 ((comparison (:phasing state)) (score best-end) (score end-of-first)))
-;                          best-end
-;                          end-of-first)))))))
-
-(defn nega-max [state depth]
-  (if (= depth 0)
-    state
-    (loop [_children (children state)
-           best-end nil]
-
-      (let [end-of-first (nega-max (first _children) (dec depth) best-end)]
-        (cond
-          (= (count _children) 0) best-end
-          (and
-            (= depth 1)
-            (not (nil? best-end))
-            ((comparison (:phasing state)) (score best-end) (score end-of-first))) best-end
-          :else (recur (rest _children) end-of-first))))))
+;      (let [end-of-first (nega-max (first _children) (dec depth) best-end)]
+;        (cond
+;          (= (count _children) 0) best-end
+;          (and
+;            (= depth 1)
+;            (not (nil? best-end))
+;            ((comparison (:phasing state)) (score best-end) (score end-of-first))) best-end
+;          :else (recur (rest _children) end-of-first))))))
 
 (defn nega-max2 [state depth]
   (if (= depth 0)
@@ -348,6 +348,16 @@
          true (sort #(compare (score %1) (score %2)))
          (= (:phasing state) :white) (last)
          (= (:phasing state) :black) (first))))
+
+(defn nega-max3 [state depth]
+  (if (= depth 0)
+    state
+    (loop [_children (children state)
+           best      nil]
+      (let [target-end (nega-max3 (first _children) (dec depth))]
+        (cond
+          (nil? best) (recur (rest _children) target-end)
+          :else       (recur (rest _children) (adopt (:phasing state) best target-end)))))))
 
 
 (defn adopt [owner a b]
@@ -361,11 +371,13 @@
 (defn score [app-state]
   ;  (+ (move-range-score app-state)
   ;     (field-unit-score app-state)))
-  (+
+(stock-unit-score app-state)
+ ; (+
  ;  (move-range-score app-state)
-   (field-unit-score app-state)
-   ; (stock-unit-score app-state)
-   ))
+;   (field-unit-score app-state)
+ ;   (stock-unit-score app-state)
+;   )
+)
 ;  (field-unit-score app-state))
 
 (defn move-range-score [app-state]
@@ -381,7 +393,7 @@
     app-state
     :stock
     (map #(hash-map (first %) (second %))) ; {:black {:hu 1 :ky 2 ...}} {:white {:hu 1 ...}}
-    (map #(+ (* (owner-score first %) (type-score (-> % second first)) (-> % second second)) 4))
+    (map #(* (* (owner-score first %) (type-score (-> % second first)) (-> % second second)) 2))
     (reduce +)))
 
 (def aaa
@@ -409,7 +421,8 @@
   (println (best-choice2 @app-state))
   (println "+++best2"))
 
-;(print (nega-max @app-state 3 nil))
+(print (nega-max2 @app-state 2))
+
 ;(print @aaa)
 ; --- virtual DOM ---
 
