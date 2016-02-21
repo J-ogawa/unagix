@@ -6,14 +6,15 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
   :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/clojurescript "1.7.189"]
+                 [org.clojure/clojurescript "1.7.170"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [sablono "0.3.4"]
                  [ring/ring-defaults "0.1.2"]
                  [ring/ring-jetty-adapter "1.3.2"]
                  [compojure "1.1.8"]
                  [hiccup "1.0.5"]
-                 [org.omcljs/om "1.0.0-alpha24"]
+                 [org.omcljs/om "0.9.0" :exclusions [cljsjs/react]]
+                 [cljsjs/react-with-addons "0.13.3-0"]
                  [figwheel-sidecar "0.5.0-2" :scope "test"]]
 
   :web-content "resources/public"
@@ -22,7 +23,7 @@
   :main server.core
   :ring {:handler server.core/app}
 
-  :plugins [[lein-cljsbuild "1.0.5"]
+  :plugins [[lein-cljsbuild "1.1.1"]
             [lein-figwheel "0.3.1"]]
 
   :source-paths ["src"]
