@@ -13,13 +13,13 @@
 
 .ban {
   float: left;
-  width: 526px;
-  height: 610px;
+  width: 324px;
+  height: 394px;
   background-color: orange;
 }
 
 .masu-row {
-  float: right;
+  float: left;
 }
 
 .masu {
@@ -28,7 +28,7 @@
   width:  50px;
   height:  62px;
   border: 2px solid black;
-  position: relative;
+  position: left;
 }
 
 .highlight {
@@ -42,13 +42,13 @@
 }
 
 .koma-white {
-  -webkitTransform: rotate(0deg);
-  -moz-transform: rotate(0deg);
+  -webkit-transform: rotate(180deg);
+  -moz-transform: rotate(180deg);
 }
 
 .koma-black {
-  -webkit-transform: rotate(180deg);
-  -moz-transform: rotate(180deg);
+  -webkitTransform: rotate(0deg);
+  -moz-transform: rotate(0deg);
 }
 
 .komadai {
