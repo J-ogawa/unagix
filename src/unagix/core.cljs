@@ -51,7 +51,7 @@
 
 (defn reach-long
   ([field src reach-vec]
-   (reach-long field (-> src :koma :owner) src reach-vec []))
+   (reach-long field (subs (name (field src)) 0 1) src reach-vec []))
 
   ([field owner src reach-vec reaching]
    (let [dst (destination field src reach-vec)]
@@ -62,8 +62,14 @@
        :mine         reaching))))
 
 (defn reach-vecs [koma vec-kind]
-  (map #(map * (direction (-> koma :owner)) %)
-       ((get basic-type-vec (-> koma :type)) vec-kind)))
+  (print "reach-vecs")
+  (print koma)
+  (print vec-kind)
+  (print (subs (name koma) 1 3))
+  (print ((get basic-type-vec (keyword (subs (name koma) 1 3))) vec-kind))
+  (print (direction (keyword (subs (name koma) 0 1))))
+  (map #(map * (direction (keyword (subs (name koma) 0 1))) %)
+       ((get basic-type-vec (keyword (subs (name koma) 1 3))) vec-kind)))
 
 (defn movable-masus [field src]
   (print "movable-masus")
@@ -117,7 +123,8 @@
           (update-in [:stock (:turn state) stock-type] dec)
           (update :turn next-turn)))
       (let [move-value (js/parseInt (last move) 36)
-            dst ((rem move-value 20) (movable-masus (state :field) target))]
+            dst (get (rem move-value 20) (movable-masus (state :field) target))]
+        (print (movable-masus (state :field) target))
         (cond->
           state
           ((complement nil?) (->> state :field dst)) (update-in [:stock (-> state :field dst (subs 1 3))] inc)
@@ -202,7 +209,7 @@
                (om/build center (:field app)) ))))
            ;    (om/build side {:role :white :stock (-> app :stock :-)})))))
 
-(println (status "abcdef__________a__________________a"))
+(println (status "abcdef__________a__________________az0"))
 (reset! app-state (status "abcdef__________a__________________a"))
 
 (om/root
