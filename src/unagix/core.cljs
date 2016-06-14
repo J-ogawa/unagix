@@ -27,23 +27,24 @@
    :nky {:short [[-1 -1] [-1  0] [ 0 -1] [ 0  1] [ 1 -1] [ 1  0]]}
    :nke {:short [[-1 -1] [-1  0] [ 0 -1] [ 0  1] [ 1 -1] [ 1  0]]}
    :ngi {:short [[-1 -1] [-1  0] [ 0 -1] [ 0  1] [ 1 -1] [ 1  0]]}
-   :nka (conj {:long  [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]} {:short [[ 0 -1] [ 0  1] [-1  0] [ 1  0]]})
+   :nka (conj {:long  [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]} {:short [[-1  0] [ 0 -1] [ 0  1] [ 1  0]]})
    :nhi (conj {:long  [[-1  0] [ 0 -1] [ 0  1] [ 1  0]]} {:short [[-1 -1] [-1  1] [ 1 -1] [ 1  1]]})})
 (def direction {:+ [1 1] :- [1 -1]})
 
-(defn check-dst [owner dst]
+(defn check-dst [field owner dst]
   (cond
-    (nil? dst)                         :out-of-field
-    (nil? (:koma dst))                 :empty-space
-    (not= (-> dst :koma :owner) owner) :enemy
+    (some #(= "-" %) (seq (name dst))) :out-of-field
+    (some #(> % 5) (map js/parseInt (seq (name dst)))) :out-of-field
+    (nil? (field dst))                         :empty-space
+    (not= (subs (name (field dst)) 0 1) owner) :enemy
     :else                              :mine))
 
 (defn destination [field src reach-vec]
-  (get field (keyword (string/join (map + [(subs (name src) 1 2) (subs (name src) 2 3)] reach-vec)))))
+  (keyword (string/join (map + [(js/parseInt (subs (name src) 0 1)) (js/parseInt (subs (name src) 1 2))] reach-vec))))
 
 (defn reach-short [field src reach-vec]
   (let [dst (destination field src reach-vec)]
-    (case (check-dst (subs (name src) 0 1) dst)
+    (case (check-dst field (subs (name src) 0 1) dst)
       :out-of-field nil
       :empty-space  dst
       :enemy        dst
@@ -55,26 +56,18 @@
 
   ([field owner src reach-vec reaching]
    (let [dst (destination field src reach-vec)]
-     (case (check-dst owner dst)
+     (print dst)
+     (case (check-dst field owner dst)
        :out-of-field reaching
        :empty-space  (reach-long field owner dst reach-vec (conj reaching dst))
        :enemy        (conj reaching dst)
        :mine         reaching))))
 
 (defn reach-vecs [koma vec-kind]
-  (print "reach-vecs")
-  (print koma)
-  (print vec-kind)
-  (print (subs (name koma) 1 3))
-  (print ((get basic-type-vec (keyword (subs (name koma) 1 3))) vec-kind))
-  (print (direction (keyword (subs (name koma) 0 1))))
   (map #(map * (direction (keyword (subs (name koma) 0 1))) %)
-       ((get basic-type-vec (keyword (subs (name koma) 1 3))) vec-kind)))
+       ((get basic-type-vec (keyword (apply str (drop 1 (name koma))))) vec-kind)))
 
 (defn movable-masus [field src]
-  (print "movable-masus")
-  (print field)
-  (print src)
   (->> (conj (map #(reach-short field src %) (reach-vecs (field src) :short))
              (map #(reach-long field src %) (reach-vecs (field src) :long)))
        (filter (complement nil?))
@@ -112,8 +105,14 @@
     (map #(hash-map (keyword (str (rem (first %) 6) (quot (first %) 6))) (convert-koma %)))
     (apply merge)))
 
+(defn- promote [koma]
+  (let [string (name koma)]
+    (keyword (str (subs string 0 1) "n" (subs string 1 3)))))
+
 (defn- reflected-state [state move]
   (let [target (->> move first to-coordinate)]
+    (print "target")
+    (print target)
     (if (nil? (->> state :field target))
       (let [
             stock-type (stock-types (> (rem (js/parseInt (last move) 36)) 0))]
@@ -123,14 +122,19 @@
           (update-in [:stock (:turn state) stock-type] dec)
           (update :turn next-turn)))
       (let [move-value (js/parseInt (last move) 36)
-            dst (get (rem move-value 20) (movable-masus (state :field) target))]
+            dst (get (vec (movable-masus (state :field) target)) (rem move-value 20))]
+            (print "move-value")
+            (print move-value)
+        (print "dst")
+        (print dst)
         (print (movable-masus (state :field) target))
         (cond->
           state
-          ((complement nil?) (->> state :field dst)) (update-in [:stock (-> state :field dst (subs 1 3))] inc)
-          true (assoc-in [:field dst] (-> state :field target))
-          true (assoc-in [:field target] nil)
-          true (update :turn next-turn))))))
+          (and ((complement nil?) (-> state :field dst)) (not= "gy" (apply str (take-last 2 (name (-> state :field dst)))))) (update-in [:stock (state :turn) (keyword (apply str (take-last 2 (name (-> state :field dst)))))] inc)
+          true                      (assoc-in [:field dst] (-> state :field target))
+          (> (quot move-value 20) 0) (update-in [:field dst] promote)
+          true                      (assoc-in [:field target] nil)
+          true                      (update :turn next-turn))))))
 
 
 (defn- status [kifu]
@@ -149,7 +153,7 @@
     (render [self]
         (dom/div #js {:className "masu" }
                  (if (last data)
-                   (dom/img #js {:src (str "http://unagi.xyz/img/" (subs (name (last data)) 1 3) ".png")
+                   (dom/img #js {:src (str "http://unagi.xyz/img/" (apply str (drop 1 (name (last data)))) ".png")
                                  :className (if (= (subs (name (last data)) 0 1) "-")
                                               "koma-white"
                                               "koma-black")}))))))
@@ -209,8 +213,8 @@
                (om/build center (:field app)) ))))
            ;    (om/build side {:role :white :stock (-> app :stock :-)})))))
 
-(println (status "abcdef__________a__________________az0"))
-(reset! app-state (status "abcdef__________a__________________a"))
+(reset! app-state (status "h____b_____b_____baaaaaa__gg___hggg_n0b0y0hl"))
+(println (status "h____b_____b_____baaaaaa__gg___hggg_n0b0y0hl"))
 
 (om/root
   container
