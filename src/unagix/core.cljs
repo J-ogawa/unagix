@@ -73,7 +73,7 @@
        (filter (complement nil?))
        (flatten)))
 
-(def stock-types ["hu" "ky" "ke" "gi" "ki" "ka" "hi" "gy"])
+(def stock-types [:hu :ky :ke :gi :ki :ka :hi :gy])
 
 (defn- to-koma-type [kifu_char]
   (case kifu_char
@@ -110,19 +110,18 @@
     (keyword (str (subs string 0 1) "n" (subs string 1 3)))))
 
 (defn- reflected-state [state move]
-  (let [target (->> move first to-coordinate)]
+  (let [target (->> move first to-coordinate)
+        move-value (js/parseInt (last move) 36)]
     (print "target")
     (print target)
     (if (nil? (->> state :field target))
-      (let [
-            stock-type (stock-types (> (rem (js/parseInt (last move) 36)) 0))]
+      (let [stock-type (get stock-types move-value)]
         (->
           state
-          (assoc-in [:field target] (str (:turn state) stock-type))
+          (assoc-in [:field target] (keyword (str (name (:turn state)) (name stock-type))))
           (update-in [:stock (:turn state) stock-type] dec)
           (update :turn next-turn)))
-      (let [move-value (js/parseInt (last move) 36)
-            dst (get (vec (movable-masus (state :field) target)) (rem move-value 20))]
+      (let [dst (get (vec (movable-masus (state :field) target)) (rem move-value 20))]
             (print "move-value")
             (print move-value)
         (print "dst")
@@ -213,8 +212,8 @@
                (om/build center (:field app)) ))))
            ;    (om/build side {:role :white :stock (-> app :stock :-)})))))
 
-(reset! app-state (status "h____b_____b_____baaaaaa__gg___hggg_n0b0y0hl"))
-(println (status "h____b_____b_____baaaaaa__gg___hggg_n0b0y0hl"))
+(reset! app-state (status "_gggh___gg__aaaaaab_____b_____b____hi011t0"))
+(println (status "_gggh___gg__aaaaaab_____b_____b____hi011t0"))
 
 (om/root
   container
