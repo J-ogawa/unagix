@@ -44,7 +44,7 @@
 
 (defn reach-short [field src reach-vec]
   (let [dst (destination field src reach-vec)]
-    (case (check-dst field (subs (name src) 0 1) dst)
+    (case (check-dst field (subs (name (field src)) 0 1) dst)
       :out-of-field nil
       :empty-space  dst
       :enemy        dst
@@ -56,7 +56,6 @@
 
   ([field owner src reach-vec reaching]
    (let [dst (destination field src reach-vec)]
-     (print dst)
      (case (check-dst field owner dst)
        :out-of-field reaching
        :empty-space  (reach-long field owner dst reach-vec (conj reaching dst))
@@ -112,8 +111,6 @@
 (defn- reflected-state [state move]
   (let [target (->> move first to-coordinate)
         move-value (js/parseInt (last move) 36)]
-    (print "target")
-    (print target)
     (if (nil? (->> state :field target))
       (let [stock-type (get stock-types move-value)]
         (->
@@ -122,14 +119,21 @@
           (update-in [:stock (:turn state) stock-type] dec)
           (update :turn next-turn)))
       (let [dst (get (vec (movable-masus (state :field) target)) (rem move-value 20))]
-            (print "move-value")
-            (print move-value)
-        (print "dst")
-        (print dst)
-        (print (movable-masus (state :field) target))
+        (print "movable-masus")
+        (print (vec (movable-masus (state :field) target)))
+(vec (movable-masus (state :field) target))
+      ;      (print "move-value")
+      ;      (print move-value)
+      ;  (print "dst")
+      ;  (print dst)
+      ;  (print (movable-masus (state :field) target))
+
+ (if ((complement nil?) (-> state :field dst)) (print (-> state :field dst)))
+;(print (apply str (take-last 2 (name (-> state :field dst)))))
         (cond->
           state
-          (and ((complement nil?) (-> state :field dst)) (not= "gy" (apply str (take-last 2 (name (-> state :field dst)))))) (update-in [:stock (state :turn) (keyword (apply str (take-last 2 (name (-> state :field dst)))))] inc)
+          (and ((complement nil?) (-> state :field dst))
+               (not= "gy" (apply str (take-last 2 (name (-> state :field dst)))))) (update-in [:stock (state :turn) (keyword (apply str (take-last 2 (name (-> state :field dst)))))] inc)
           true                      (assoc-in [:field dst] (-> state :field target))
           (> (quot move-value 20) 0) (update-in [:field dst] promote)
           true                      (assoc-in [:field target] nil)
@@ -165,12 +169,11 @@
              (om/build-all masu app)))))
 
 (defn center [app owner]
-(print (partition 6 (sort-by first app)))
   (reify
     om/IRender
     (render [self]
       (dom/div #js {:className "center"}
-      (dom/div #js {:className "ban"})
+      (apply dom/div #js {:className "ban"}(om/build-all masu-row (partition 6 (sort-by first app))))
                (dom/div #js {:id "button"
                              :onClick #(print "---- ----")} )
                ))))
@@ -213,14 +216,18 @@
     om/IRender
     (render [self]
       (dom/div #js {:className "field"}
-               (om/build side {:role :black :stock (-> app :stock :+)})
-               (om/build center (:field app))
                (om/build side {:role :white :stock (-> app :stock :-)})
+               (om/build center (:field app))
+               (om/build side {:role :black :stock (-> app :stock :+)})
                )
       )))
 
-(reset! app-state (status "_gggh___gg__aaaaaab_____b_____b____hi011t0"))
-(println (status "_gggh___gg__aaaaaab_____b_____b____hi011t0"))
+
+                  ;0123456789abcdefghijklmnopqrstuvwxyz
+(let [aaa (status "_gggh___gg__aaaaaaabc_e____d__h_fg_hj012kl40m290i0d0r2g2z0m2x0s1u1r0")]
+(reset! app-state aaa);(status "_gggh___gg__aaaaaaabc_e____d__h_fg_hj012kl40m290i0d0r2g2z0m2x0s1u1r0"))
+(println aaa);(status "_gggh___gg__aaaaaaabc_e____d__h_fg_h"));j012kl40m290i0d0r2g2z0m2x0s1u1r0"))
+  )
 
 (om/root
   container
