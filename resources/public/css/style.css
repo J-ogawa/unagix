@@ -1,14 +1,22 @@
 /* some style */
 .field {
+  width: 524px;
   height: 600px;
 }
 
 .side {
   float: left;
   width: 100px;
-  height: 610px;
+  height: 480px;
   position: relative;
   background-color: yellowgreen;
+}
+
+.center {
+  float: left;
+  width: 324px;
+  height: 480px;
+  background-color: red;
 }
 
 .ban {
@@ -16,6 +24,13 @@
   width: 324px;
   height: 394px;
   background-color: orange;
+}
+
+#button {
+  width: 324px;
+  height: 86px;
+  background-color: blue;
+  float: left;
 }
 
 .masu-row {
@@ -65,4 +80,5 @@
 #komadai-black {
   top: 0px;
 }
+
 
