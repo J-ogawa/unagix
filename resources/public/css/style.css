@@ -51,11 +51,10 @@
 
 #triangle-left {
   position:absolute;
-  top: 0px;
-  right: 530px;
-  bottom: 63px;
-  left:0px;
-  margin: auto auto;
+  top: 200px;
+  right: 0px;
+  bottom: 0px;
+  left: 30px;
   width: 0;
   height: 0;
   border-top: 50px solid transparent;
@@ -66,11 +65,10 @@
 
 #triangle-right {
   position:absolute;
-  top: 0px;
+  top: 200px;
   right: 0px;
-  bottom: 63px;
-  left: 170px;
-  margin: auto auto;
+  bottom: 0px;
+  left: 410px;
   width: 0;
   height: 0;
   border-top: 50px solid transparent;
