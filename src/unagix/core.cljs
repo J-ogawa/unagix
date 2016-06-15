@@ -173,9 +173,11 @@
     om/IRender
     (render [self]
       (dom/div #js {:className "center"}
+(dom/div #js {:className "button"
+                             :onClick #(print "---- ----")})
       (apply dom/div #js {:className "ban"}(om/build-all masu-row (partition 6 (sort-by first app))))
-               (dom/div #js {:id "button"
-                             :onClick #(print "---- ----")} )
+               (dom/div #js {:className "button"
+                             :onClick #(print "---- ----")})
                ))))
    ;   (apply dom/div #js {:className "ban"}
    ;          (om/build-all masu-row (partition 6 (sort-by first app)))))))
@@ -219,6 +221,9 @@
                (om/build side {:role :white :stock (-> app :stock :-)})
                (om/build center (:field app))
                (om/build side {:role :black :stock (-> app :stock :+)})
+               ;(dom/div #js {:className "over"})
+               (dom/div #js {:id "triangle-left" :onClick #(print "-----")})
+               (dom/div #js {:id "triangle-right" :onClick #(print "+++++")})
                )
       )))
 

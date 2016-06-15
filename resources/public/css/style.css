@@ -1,7 +1,8 @@
 /* some style */
 .field {
   width: 524px;
-  height: 600px;
+  height: 480px;
+  background-color: yellowgreen;
 }
 
 .side {
@@ -9,14 +10,12 @@
   width: 100px;
   height: 480px;
   position: relative;
-  background-color: yellowgreen;
 }
 
 .center {
   float: left;
   width: 324px;
   height: 480px;
-  background-color: red;
 }
 
 .ban {
@@ -26,13 +25,59 @@
   background-color: orange;
 }
 
-#button {
+.button {
   width: 324px;
-  height: 86px;
-  background-color: blue;
+  height: 43px;
   float: left;
 }
 
+.over {
+  position:absolute;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  left:0px;
+  margin: auto auto
+  width:300px;
+  height: 480px;
+  text-align:center;
+  color:#fff;
+  line-height:250%;
+  background-color:#ffffff;
+  filter:alpha(opacity=80);
+  -moz-opacity: 0.8;
+  opacity: 0.8;
+}
+
+#triangle-left {
+  position:absolute;
+  top: 0px;
+  right: 530px;
+  bottom: 63px;
+  left:0px;
+  margin: auto auto;
+  width: 0;
+  height: 0;
+  border-top: 50px solid transparent;
+  border-right: 100px solid white;
+  border-bottom: 50px solid transparent;
+  opacity: 0.6;
+}
+
+#triangle-right {
+  position:absolute;
+  top: 0px;
+  right: 0px;
+  bottom: 63px;
+  left: 170px;
+  margin: auto auto;
+  width: 0;
+  height: 0;
+  border-top: 50px solid transparent;
+  border-left: 100px solid white;
+  border-bottom: 50px solid transparent;
+  opacity: 0.6;
+}
 .masu-row {
   float: left;
 }
