@@ -9,8 +9,10 @@
 
 (enable-console-print!)
 
-(defonce app-state
-  (atom {}))
+(defonce kifu
+  (apply str (drop 1 (-> js/window .-location .-search))))
+
+(defonce move-index (atom 0))
 
 ; --- move ---
 
@@ -119,17 +121,6 @@
           (update-in [:stock (:turn state) stock-type] dec)
           (update :turn next-turn)))
       (let [dst (get (vec (movable-masus (state :field) target)) (rem move-value 20))]
-        (print "movable-masus")
-        (print (vec (movable-masus (state :field) target)))
-(vec (movable-masus (state :field) target))
-      ;      (print "move-value")
-      ;      (print move-value)
-      ;  (print "dst")
-      ;  (print dst)
-      ;  (print (movable-masus (state :field) target))
-
- (if ((complement nil?) (-> state :field dst)) (print (-> state :field dst)))
-;(print (apply str (take-last 2 (name (-> state :field dst)))))
         (cond->
           state
           (and ((complement nil?) (-> state :field dst))
@@ -138,7 +129,6 @@
           (> (quot move-value 20) 0) (update-in [:field dst] promote)
           true                      (assoc-in [:field target] nil)
           true                      (update :turn next-turn))))))
-
 
 (defn- status [kifu]
   (->
@@ -154,12 +144,12 @@
   (reify
     om/IRender
     (render [self]
-        (dom/div #js {:className "masu" }
-                 (if (last data)
-                   (dom/img #js {:src (str "http://unagi.xyz/img/" (apply str (drop 1 (name (last data)))) ".png")
-                                 :className (if (= (subs (name (last data)) 0 1) "-")
-                                              "koma-white"
-                                              "koma-black")}))))))
+      (dom/div #js {:className "masu" }
+               (if (last data)
+                 (dom/img #js {:src (str "http://unagi.xyz/img/" (apply str (drop 1 (name (last data)))) ".png")
+                               :className (if (= (subs (name (last data)) 0 1) "-")
+                                            "koma-white"
+                                            "koma-black")}))))))
 
 (defn masu-row [app owner]
   (reify
@@ -173,14 +163,9 @@
     om/IRender
     (render [self]
       (dom/div #js {:className "center"}
-(dom/div #js {:className "button"
-                             :onClick #(print "---- ----")})
-      (apply dom/div #js {:className "ban"}(om/build-all masu-row (partition 6 (sort-by first app))))
-               (dom/div #js {:className "button"
-                             :onClick #(print "---- ----")})
-               ))))
-   ;   (apply dom/div #js {:className "ban"}
-   ;          (om/build-all masu-row (partition 6 (sort-by first app)))))))
+               (dom/div #js {:className "button"})
+               (apply dom/div #js {:className "ban"}(om/build-all masu-row (partition 6 (sort-by first app))))
+               (dom/div #js {:className "button"})))))
 
 (defn stock-koma [app owner]
   (reify
@@ -214,29 +199,20 @@
                (om/build komadai player)))))
 
 (defn container [app owner]
+  (let [state (status (subs kifu 0 (+ 36 (* app 2))))]
   (reify
     om/IRender
     (render [self]
       (dom/div #js {:className "field"}
-               (om/build side {:role :white :stock (-> app :stock :-)})
-               (om/build center (:field app))
-               (om/build side {:role :black :stock (-> app :stock :+)})
-               ;(dom/div #js {:className "over"})
-               (dom/div #js {:id "triangle-left" :onClick #(print "-----")})
-               (dom/div #js {:id "triangle-right" :onClick #(print "+++++")})
-               )
-      )))
-
-
-                  ;0123456789abcdefghijklmnopqrstuvwxyz
-(let [aaa (status "_gggh___gg__aaaaaaabc_e____d__h_fg_hj012kl40m290i0d0r2g2z0m2x0s1u1r0")]
-(reset! app-state aaa);(status "_gggh___gg__aaaaaaabc_e____d__h_fg_hj012kl40m290i0d0r2g2z0m2x0s1u1r0"))
-(println aaa);(status "_gggh___gg__aaaaaaabc_e____d__h_fg_h"));j012kl40m290i0d0r2g2z0m2x0s1u1r0"))
-  )
+               (om/build side {:role :white :stock (-> state :stock :-)})
+               (om/build center (:field state))
+               (om/build side {:role :black :stock (-> state :stock :+)})
+               (if (< 0 app) (dom/div #js {:id "triangle-left" :onClick #(swap! move-index dec)}))
+               (if (< (+ 36 (* app 2)) (count kifu)) (dom/div #js {:id "triangle-right" :onClick #(swap! move-index inc)})))))))
 
 (om/root
   container
-  app-state
+  move-index
   {:target (. js/document (getElementById "app"))})
 
 
@@ -245,4 +221,3 @@
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
   )
-
