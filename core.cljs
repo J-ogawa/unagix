@@ -9,10 +9,8 @@
 
 (enable-console-print!)
 
-(defonce kifu
-  (apply str (drop 1 (-> js/window .-location .-search))))
-
-(defonce move-index (atom 0))
+(defonce app-state
+  (atom {}))
 
 ; --- move ---
 
@@ -46,7 +44,7 @@
 
 (defn reach-short [field src reach-vec]
   (let [dst (destination field src reach-vec)]
-    (case (check-dst field (subs (name (field src)) 0 1) dst)
+    (case (check-dst field (subs (name src) 0 1) dst)
       :out-of-field nil
       :empty-space  dst
       :enemy        dst
@@ -58,6 +56,7 @@
 
   ([field owner src reach-vec reaching]
    (let [dst (destination field src reach-vec)]
+     (print dst)
      (case (check-dst field owner dst)
        :out-of-field reaching
        :empty-space  (reach-long field owner dst reach-vec (conj reaching dst))
@@ -113,6 +112,8 @@
 (defn- reflected-state [state move]
   (let [target (->> move first to-coordinate)
         move-value (js/parseInt (last move) 36)]
+    (print "target")
+    (print target)
     (if (nil? (->> state :field target))
       (let [stock-type (get stock-types move-value)]
         (->
@@ -121,14 +122,19 @@
           (update-in [:stock (:turn state) stock-type] dec)
           (update :turn next-turn)))
       (let [dst (get (vec (movable-masus (state :field) target)) (rem move-value 20))]
+            (print "move-value")
+            (print move-value)
+        (print "dst")
+        (print dst)
+        (print (movable-masus (state :field) target))
         (cond->
           state
-          (and ((complement nil?) (-> state :field dst))
-               (not= "gy" (apply str (take-last 2 (name (-> state :field dst)))))) (update-in [:stock (state :turn) (keyword (apply str (take-last 2 (name (-> state :field dst)))))] inc)
+          (and ((complement nil?) (-> state :field dst)) (not= "gy" (apply str (take-last 2 (name (-> state :field dst)))))) (update-in [:stock (state :turn) (keyword (apply str (take-last 2 (name (-> state :field dst)))))] inc)
           true                      (assoc-in [:field dst] (-> state :field target))
           (> (quot move-value 20) 0) (update-in [:field dst] promote)
           true                      (assoc-in [:field target] nil)
           true                      (update :turn next-turn))))))
+
 
 (defn- status [kifu]
   (->
@@ -144,12 +150,12 @@
   (reify
     om/IRender
     (render [self]
-      (dom/div #js {:className "masu" }
-               (if (last data)
-                 (dom/img #js {:src (str "http://unagi.xyz/img/" (apply str (drop 1 (name (last data)))) ".png")
-                               :className (if (= (subs (name (last data)) 0 1) "-")
-                                            "koma-white"
-                                            "koma-black")}))))))
+        (dom/div #js {:className "masu" }
+                 (if (last data)
+                   (dom/img #js {:src (str "http://unagi.xyz/img/" (apply str (drop 1 (name (last data)))) ".png")
+                                 :className (if (= (subs (name (last data)) 0 1) "-")
+                                              "koma-white"
+                                              "koma-black")}))))))
 
 (defn masu-row [app owner]
   (reify
@@ -159,13 +165,17 @@
              (om/build-all masu app)))))
 
 (defn center [app owner]
+(print (partition 6 (sort-by first app)))
   (reify
     om/IRender
     (render [self]
       (dom/div #js {:className "center"}
-               (dom/div #js {:className "button"})
-               (apply dom/div #js {:className "ban"}(om/build-all masu-row (partition 6 (sort-by first app))))
-               (dom/div #js {:className "button"})))))
+      (dom/div #js {:className "ban"})
+               (dom/div #js {:id "button"
+                             :onClick #(print "---- ----")} )
+               ))))
+   ;   (apply dom/div #js {:className "ban"}
+   ;          (om/build-all masu-row (partition 6 (sort-by first app)))))))
 
 (defn stock-koma [app owner]
   (reify
@@ -199,20 +209,22 @@
                (om/build komadai player)))))
 
 (defn container [app owner]
-  (let [state (status (subs kifu 0 (+ 36 (* app 2))))]
   (reify
     om/IRender
     (render [self]
       (dom/div #js {:className "field"}
-               (om/build side {:role :white :stock (-> state :stock :-)})
-               (om/build center (:field state))
-               (om/build side {:role :black :stock (-> state :stock :+)})
-               (if (< 0 app) (dom/div #js {:id "triangle-left" :onClick #(swap! move-index dec)}))
-               (if (< (+ 36 (* app 2)) (count kifu)) (dom/div #js {:id "triangle-right" :onClick #(swap! move-index inc)})))))))
+               (om/build side {:role :black :stock (-> app :stock :+)})
+               (om/build center (:field app))
+               (om/build side {:role :white :stock (-> app :stock :-)})
+               )
+      )))
+
+(reset! app-state (status "_gggh___gg__aaaaaab_____b_____b____hi011t0"))
+(println (status "_gggh___gg__aaaaaab_____b_____b____hi011t0"))
 
 (om/root
   container
-  move-index
+  app-state
   {:target (. js/document (getElementById "app"))})
 
 
@@ -221,3 +233,4 @@
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
   )
+

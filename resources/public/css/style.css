@@ -1,25 +1,83 @@
 /* some style */
 .field {
-  height: 600px;
+  width: 524px;
+  height: 480px;
+  background-color: yellowgreen;
 }
 
 .side {
   float: left;
   width: 100px;
-  height: 610px;
+  height: 480px;
   position: relative;
-  background-color: yellowgreen;
+}
+
+.center {
+  float: left;
+  width: 324px;
+  height: 480px;
 }
 
 .ban {
   float: left;
-  width: 526px;
-  height: 610px;
+  width: 324px;
+  height: 394px;
   background-color: orange;
 }
 
+.button {
+  width: 324px;
+  height: 43px;
+  float: left;
+}
+
+.over {
+  position:absolute;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  left:0px;
+  margin: auto auto
+  width:300px;
+  height: 480px;
+  text-align:center;
+  color:#fff;
+  line-height:250%;
+  background-color:#ffffff;
+  filter:alpha(opacity=80);
+  -moz-opacity: 0.8;
+  opacity: 0.8;
+}
+
+#triangle-left {
+  position:absolute;
+  top: 200px;
+  right: 0px;
+  bottom: 0px;
+  left: 30px;
+  width: 0;
+  height: 0;
+  border-top: 50px solid transparent;
+  border-right: 100px solid white;
+  border-bottom: 50px solid transparent;
+  opacity: 0.6;
+}
+
+#triangle-right {
+  position:absolute;
+  top: 200px;
+  right: 0px;
+  bottom: 0px;
+  left: 410px;
+  width: 0;
+  height: 0;
+  border-top: 50px solid transparent;
+  border-left: 100px solid white;
+  border-bottom: 50px solid transparent;
+  opacity: 0.6;
+}
 .masu-row {
-  float: right;
+  float: left;
 }
 
 .masu {
@@ -28,7 +86,7 @@
   width:  50px;
   height:  62px;
   border: 2px solid black;
-  position: relative;
+  position: left;
 }
 
 .highlight {
@@ -42,13 +100,13 @@
 }
 
 .koma-white {
-  -webkitTransform: rotate(0deg);
-  -moz-transform: rotate(0deg);
+  -webkit-transform: rotate(180deg);
+  -moz-transform: rotate(180deg);
 }
 
 .koma-black {
-  -webkit-transform: rotate(180deg);
-  -moz-transform: rotate(180deg);
+  -webkitTransform: rotate(0deg);
+  -moz-transform: rotate(0deg);
 }
 
 .komadai {
@@ -58,11 +116,12 @@
   position: absolute;
 }
 
-#komadai-white {
+#komadai-black {
   bottom: 0px;
 }
 
-#komadai-black {
+#komadai-white {
   top: 0px;
 }
+
 
