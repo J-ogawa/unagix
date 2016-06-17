@@ -146,7 +146,7 @@
     (render [self]
       (dom/div #js {:className "masu" }
                (if (last data)
-                 (dom/img #js {:src (str "http://unagi.xyz/img/" (apply str (drop 1 (name (last data)))) ".png")
+                 (dom/img #js {:src (str "images/" (apply str (drop 1 (name (last data)))) ".png")
                                :className (if (= (subs (name (last data)) 0 1) "-")
                                             "koma-white"
                                             "koma-black")}))))))
@@ -173,7 +173,7 @@
     (render [self]
       (dom/div #js {}
                (when (> (:amount app) 0)
-                 (dom/img #js {:src (str "http://unagi.xyz/img/" (name (:koma-type app)) ".png")
+                 (dom/img #js {:src (str "images/" (name (:koma-type app)) ".png")
                                :className (str "koma-" (name (:role app)))
                                }))
                (when (> (:amount app) 1)
