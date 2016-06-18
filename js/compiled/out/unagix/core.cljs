@@ -207,8 +207,8 @@
                (om/build side {:role :white :stock (-> state :stock :-)})
                (om/build center (:field state))
                (om/build side {:role :black :stock (-> state :stock :+)})
-               (if (< 0 app) (dom/div #js {:id "triangle-left" :onClick #(swap! move-index dec)}))
-               (if (< (+ 36 (* app 2)) (count kifu)) (dom/div #js {:id "triangle-right" :onClick #(swap! move-index inc)})))))))
+               (if (< 0 app) (dom/button #js {:id "triangle-left" :onClick #(swap! move-index dec)}))
+               (if (< (+ 36 (* app 2)) (count kifu)) (dom/button #js {:id "triangle-right" :onClick #(swap! move-index inc)})))))))
 
 (om/root
   container
