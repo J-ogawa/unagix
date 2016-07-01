@@ -10,7 +10,7 @@
 (enable-console-print!)
 
 (defonce kifu
-  (apply str (drop 1 (-> js/window .-location .-search))))
+  (apply str (drop 2 (-> js/window .-location .-search))))
 
 (defonce move-index (atom 0))
 
