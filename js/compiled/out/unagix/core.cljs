@@ -72,7 +72,12 @@
   (->> (conj (map #(reach-short field src %) (reach-vecs (field src) :short))
              (map #(reach-long field src %) (reach-vecs (field src) :long)))
        (filter (complement nil?))
-       (flatten)))
+       (flatten)
+       (sort-by to-int)))
+
+(defn to-int [coordinate]
+  (+ (->> coordinate name first js/parseInt)
+     (* (->> coordinate name last js/parseInt) 6)))
 
 (def stock-types [:hu :ky :ke :gi :ki :ka :hi :gy])
 
