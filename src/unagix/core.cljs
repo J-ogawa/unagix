@@ -21,17 +21,20 @@
                  :when (re-find #"=" part)]
              (string/split part #"=" 2))))
 
+(defn- decode-param [v]
+  (try
+    (js/decodeURIComponent (string/replace v "+" " "))
+    (catch :default _ v)))
+
+; 対局者名: sente / gote パラメータ (なければ空)
+(defonce player-names
+  {:+ (some-> (get query-params "sente") decode-param)
+   :- (some-> (get query-params "gote") decode-param)})
+
 ; 視点: :+ (先手) / :- (後手)。view パラメータがなければ先手。
 (defonce app-state
   (atom {:move-index 0
          :view (if (= (get query-params "view") "gote") :- :+)}))
-
-(defn- sync-view-param! [view]
-  (let [params (if (= view :-)
-                 (assoc query-params "view" "gote")
-                 (dissoc query-params "view"))
-        search (string/join "&" (cons (first query-parts) (map (fn [[k v]] (str k "=" v)) params)))]
-    (.replaceState js/history nil "" (str (-> js/window .-location .-pathname) "?" search))))
 
 ; --- move ---
 
@@ -87,16 +90,16 @@
   (map #(map * (direction (keyword (subs (name koma) 0 1))) %)
        ((get basic-type-vec (keyword (apply str (drop 1 (name koma))))) vec-kind)))
 
+(defn to-int [coordinate]
+  (+ (->> coordinate name first js/parseInt)
+     (* (->> coordinate name last js/parseInt) 6)))
+
 (defn movable-masus [field src]
   (->> (conj (map #(reach-short field src %) (reach-vecs (field src) :short))
              (map #(reach-long field src %) (reach-vecs (field src) :long)))
        (filter (complement nil?))
        (flatten)
        (sort-by to-int)))
-
-(defn to-int [coordinate]
-  (+ (->> coordinate name first js/parseInt)
-     (* (->> coordinate name last js/parseInt) 6)))
 
 (def stock-types [:hu :ky :ke :gi :ki :ka :hi :gy])
 
@@ -173,14 +176,17 @@
 (defn- koma-class [koma-owner view]
   (if (= koma-owner view) "koma-up" "koma-down"))
 
+(defn- koma-img [koma-type class-name]
+  (dom/img #js {:src (koma-image koma-type) :className (str "koma " class-name)}))
+
 (defn masu [data owner]
   (reify
     om/IRender
     (render [self]
       (dom/div #js {:className "masu" }
                (if-let [koma (:koma data)]
-                 (dom/img #js {:src (koma-image (apply str (drop 1 (name koma))))
-                               :className (koma-class (keyword (subs (name koma) 0 1)) (:view data))}))))))
+                 (koma-img (apply str (drop 1 (name koma)))
+                           (koma-class (keyword (subs (name koma) 0 1)) (:view data))))))))
 
 (defn masu-row [app owner]
   (reify
@@ -189,30 +195,38 @@
       (apply dom/div #js {:className "masu-row"}
              (om/build-all masu app)))))
 
+(def turn-marks {:+ "☗" :- "☖"})
+
 (defn center [app owner]
   (reify
     om/IRender
     (render [self]
-      (let [masus (map #(hash-map :koma (last %) :view (:view app)) (sort-by first (:field app)))]
+      (let [view (:view app)
+            masus (map #(hash-map :koma (last %) :view view) (sort-by first (:field app)))]
         (dom/div #js {:className "center"}
-                 (dom/div #js {:className "button"})
+                 ; 上に相手、下に自分(視点側)の手番マークと対局者名。上側は左右も反対に置く
+                 (dom/div #js {:className "bar"}
+                          (dom/div #js {:className "player player-top"}
+                                   (dom/span #js {:className "player-name"} (player-names (next-turn view)))
+                                   (dom/span #js {:className "turn-mark turn-mark-opponent"} (turn-marks (next-turn view)))))
                  ; 後手視点では盤を 180 度回転させるため、マスを逆順に並べる
                  (apply dom/div #js {:className "ban"}
-                        (om/build-all masu-row (partition 6 (if (= (:view app) :-) (reverse masus) masus))))
-                 (dom/div #js {:className "button"}
-                          (dom/button #js {:id "flip" :onClick (:on-flip app)} "盤面反転")))))))
+                        (om/build-all masu-row (partition 6 (if (= view :-) (reverse masus) masus))))
+                 (dom/div #js {:className "bar"}
+                          (dom/div #js {:className "player player-bottom"}
+                                   (dom/span #js {:className "turn-mark"} (turn-marks view))
+                                   (dom/span #js {:className "player-name"} (player-names view)))))))))
 
 (defn stock-koma [app owner]
   (reify
     om/IRender
     (render [self]
-      (dom/div #js {}
-               (when (> (:amount app) 0)
-                 (dom/img #js {:src (koma-image (name (:koma-type app)))
-                               :className (koma-class (:role app) (:view app))
-                               }))
-               (when (> (:amount app) 1)
-                 (:amount app))))))
+      (if (> (:amount app) 0)
+        (dom/div #js {:className "stock-koma"}
+                 (koma-img (name (:koma-type app)) (koma-class (:role app) (:view app)))
+                 (when (> (:amount app) 1)
+                   (dom/span #js {:className "stock-amount"} (:amount app))))
+        (dom/div nil)))))
 
 (defn komadai [player owner]
   (reify
@@ -243,15 +257,10 @@
       (dom/div #js {:className "field"}
                ; 左上に相手、右下に自分(視点側)の駒台
                (om/build side {:role opponent :view view :stock (-> state :stock opponent)})
-               (om/build center {:field (:field state)
-                                 :view view
-                                 :on-flip (fn []
-                                            (let [new-view (next-turn view)]
-                                              (om/update! app :view new-view)
-                                              (sync-view-param! new-view)))})
+               (om/build center {:field (:field state) :view view})
                (om/build side {:role view :view view :stock (-> state :stock view)})
-               (if (< 0 move-index) (dom/button #js {:id "triangle-left" :onClick #(om/transact! app :move-index dec)}))
-               (if (< (+ 36 (* move-index 2)) (count kifu)) (dom/button #js {:id "triangle-right" :onClick #(om/transact! app :move-index inc)})))))))
+               (if (< 0 move-index) (dom/button #js {:id "triangle-left" :aria-label "前の手" :onClick #(om/transact! app :move-index dec)}))
+               (if (< (+ 36 (* move-index 2)) (count kifu)) (dom/button #js {:id "triangle-right" :aria-label "次の手" :onClick #(om/transact! app :move-index inc)})))))))
 
 (om/root
   container
