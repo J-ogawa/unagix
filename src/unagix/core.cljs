@@ -9,15 +9,15 @@
 
 (enable-console-print!)
 
-; クエリ文字列は "?<棋譜>&view=gote" の形式。"=" を含まない部分を棋譜として扱う。
+; クエリ文字列は "?" + 1文字 + 棋譜 の形式で、"&view=gote" のようなパラメータを後ろに付けられる。
 (defonce query-parts
   (string/split (apply str (drop 1 (-> js/window .-location .-search))) #"&"))
 
 (defonce kifu
-  (or (first (remove #(re-find #"=" %) query-parts)) ""))
+  (apply str (drop 1 (first query-parts))))
 
 (defonce query-params
-  (into {} (for [part query-parts
+  (into {} (for [part (rest query-parts)
                  :when (re-find #"=" part)]
              (string/split part #"=" 2))))
 
@@ -30,7 +30,7 @@
   (let [params (if (= view :-)
                  (assoc query-params "view" "gote")
                  (dissoc query-params "view"))
-        search (string/join "&" (cons kifu (map (fn [[k v]] (str k "=" v)) params)))]
+        search (string/join "&" (cons (first query-parts) (map (fn [[k v]] (str k "=" v)) params)))]
     (.replaceState js/history nil "" (str (-> js/window .-location .-pathname) "?" search))))
 
 ; --- move ---
@@ -87,11 +87,16 @@
   (map #(map * (direction (keyword (subs (name koma) 0 1))) %)
        ((get basic-type-vec (keyword (apply str (drop 1 (name koma))))) vec-kind)))
 
+(defn to-int [coordinate]
+  (+ (->> coordinate name first js/parseInt)
+     (* (->> coordinate name last js/parseInt) 6)))
+
 (defn movable-masus [field src]
   (->> (conj (map #(reach-short field src %) (reach-vecs (field src) :short))
              (map #(reach-long field src %) (reach-vecs (field src) :long)))
        (filter (complement nil?))
-       (flatten)))
+       (flatten)
+       (sort-by to-int)))
 
 (def stock-types [:hu :ky :ke :gi :ki :ka :hi :gy])
 
@@ -245,8 +250,8 @@
                                               (om/update! app :view new-view)
                                               (sync-view-param! new-view)))})
                (om/build side {:role view :view view :stock (-> state :stock view)})
-               (if (< 0 move-index) (dom/div #js {:id "triangle-left" :onClick #(om/transact! app :move-index dec)}))
-               (if (< (+ 36 (* move-index 2)) (count kifu)) (dom/div #js {:id "triangle-right" :onClick #(om/transact! app :move-index inc)})))))))
+               (if (< 0 move-index) (dom/button #js {:id "triangle-left" :onClick #(om/transact! app :move-index dec)}))
+               (if (< (+ 36 (* move-index 2)) (count kifu)) (dom/button #js {:id "triangle-right" :onClick #(om/transact! app :move-index inc)})))))))
 
 (om/root
   container
