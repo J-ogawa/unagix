@@ -1,129 +1,168 @@
-/* some style */
+/* 盤全体は 524 x 448 単位で設計し、1 単位 (--u) を画面に収まる最大の大きさにする */
+:root {
+  --u: min(calc(100vw / 524), calc(100vh / 448));
+}
+
+html, body {
+  margin: 0;
+  background-color: #fff;
+}
+
 .field {
-  width: 524px;
-  height: 480px;
+  position: relative;
+  display: flex;
+  width: calc(var(--u) * 524);
+  height: calc(var(--u) * 448);
+  margin: 0 auto;
   background-color: yellowgreen;
 }
 
 .side {
-  float: left;
-  width: 100px;
-  height: 480px;
-  position: relative;
+  width: calc(var(--u) * 100);
+  height: 100%;
 }
 
 .center {
-  float: left;
-  width: 324px;
-  height: 480px;
+  display: flex;
+  flex-direction: column;
+  width: calc(var(--u) * 324);
+  height: 100%;
 }
 
-.ban {
-  float: left;
-  width: 324px;
-  height: 394px;
-  background-color: orange;
-}
-
-.button {
-  width: 324px;
-  height: 43px;
-  float: left;
-}
-
-.over {
-  position:absolute;
-  top: 0px;
-  right: 0px;
-  bottom: 0px;
-  left:0px;
-  margin: auto auto
-  width:300px;
-  height: 480px;
-  text-align:center;
-  color:#fff;
-  line-height:250%;
-  background-color:#ffffff;
-  filter:alpha(opacity=80);
-  -moz-opacity: 0.8;
-  opacity: 0.8;
-}
-
-#triangle-left {
-  position:absolute;
-  top: 200px;
-  right: 0px;
-  bottom: 0px;
-  left: 30px;
-  width: 0;
-  height: 0;
-  border-top: 50px solid transparent;
-  border-right: 100px solid white;
-  border-bottom: 50px solid transparent;
-  opacity: 0.6;
-}
-
-#triangle-right {
-  position:absolute;
-  top: 200px;
-  right: 0px;
-  bottom: 0px;
-  left: 410px;
-  width: 0;
-  height: 0;
-  border-top: 50px solid transparent;
-  border-left: 100px solid white;
-  border-bottom: 50px solid transparent;
-  opacity: 0.6;
-}
-.masu-row {
-  float: left;
-}
-
-.masu {
-  top: 10px;
-  right: 20px;
-  width:  50px;
-  height:  62px;
-  border: 2px solid black;
-  position: left;
-}
-
-.highlight {
-  background-color: red;
-}
-
-.koma {
-  width: 50px;
-  height: 62px;
+.bar {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--u) * 44);
 }
 
-.koma-down {
-  -webkit-transform: rotate(180deg);
-  -moz-transform: rotate(180deg);
+.turn-mark {
+  display: inline-block;
+  font-size: calc(var(--u) * 32);
+  line-height: 1;
+}
+
+.player {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  max-width: calc(var(--u) * 260);
+}
+
+/* 下側は左端にマーク、その右に名前。上側はその反対 */
+.player-bottom {
+  left: calc(var(--u) * 8);
+}
+
+.player-top {
+  right: calc(var(--u) * 8);
+}
+
+.player-name {
+  margin: 0 calc(var(--u) * 6);
+  overflow: hidden;
+  font-size: calc(var(--u) * 20);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 相手側の手番マークは盤の向こう側を向くよう上下反転する */
+.turn-mark-opponent {
   transform: rotate(180deg);
 }
 
-.koma-up {
-  -webkit-transform: rotate(0deg);
-  -moz-transform: rotate(0deg);
-  transform: rotate(0deg);
+
+.ban {
+  display: flex;
+  height: calc(var(--u) * 360);
+  box-sizing: border-box;
+  border-top: 1.5px solid #333;
+  border-left: 1.5px solid #333;
+  background-color: orange;
+}
+
+/* masu-row は盤の 1 列 (縦に 6 マス) */
+.masu-row {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.masu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  border-right: 1.5px solid #333;
+  border-bottom: 1.5px solid #333;
+}
+
+.koma {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
+}
+
+.koma-down {
+  transform: rotate(180deg);
 }
 
 .komadai {
-  width: 100px;
-  height: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
   background-color: orange;
-  position: absolute;
-}
-
-.komadai-bottom {
-  bottom: 0px;
 }
 
 .komadai-top {
-  top: 0px;
+  justify-content: flex-start;
 }
 
+/* 自分(視点側)の駒台は下に揃える */
+.komadai-bottom {
+  justify-content: flex-end;
+}
 
+.stock-koma {
+  display: flex;
+  align-items: center;
+  height: calc(var(--u) * 56);
+}
+
+.stock-koma .koma {
+  width: calc(var(--u) * 48);
+  height: calc(var(--u) * 54);
+}
+
+.stock-amount {
+  margin-left: calc(var(--u) * 2);
+  font-size: calc(var(--u) * 20);
+}
+
+#triangle-left,
+#triangle-right {
+  position: absolute;
+  top: calc(var(--u) * 174);
+  width: calc(var(--u) * 80);
+  height: calc(var(--u) * 100);
+  padding: 0;
+  border: none;
+  background-color: #fff;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+#triangle-left {
+  left: calc(var(--u) * 10);
+  clip-path: polygon(100% 0, 0 50%, 100% 100%);
+}
+
+#triangle-right {
+  right: calc(var(--u) * 10);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}

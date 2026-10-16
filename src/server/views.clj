@@ -4,6 +4,8 @@
 (defn index-page []
   (html5
     [:head
+     [:meta {:charset "utf-8"}]
+     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
      [:title "unagix"]
      (include-css "/css/style.css")]
     [:body
