@@ -16,6 +16,10 @@
 (defonce kifu
   (apply str (drop 1 (first query-parts))))
 
+; 手数。初期配置 36 文字の後ろは 2 文字で 1 手。末尾の余りの文字は手として扱わない
+(defonce total-moves
+  (max 0 (quot (- (count kifu) 36) 2)))
+
 (defonce query-params
   (into {} (for [part (rest query-parts)
                  :when (re-find #"=" part)]
@@ -163,7 +167,7 @@
              :- {:hu 0 :ky 0 :ke 0 :gi 0 :ki 0 :ka 0 :hi 0 :gy 0}}
      :turn :+}
     (assoc :field (first-field (take 36 (seq kifu))))
-    (as-> status (reduce #(reflected-state %1 %2) status (map (fn[x](apply str x)) (partition-all 2 (drop 36 (seq kifu))))))))
+    (as-> status (reduce #(reflected-state %1 %2) status (map (fn[x](apply str x)) (partition 2 (drop 36 (seq kifu))))))))
 
 ; --- virtual DOM ---
 
@@ -260,7 +264,7 @@
                (om/build center {:field (:field state) :view view})
                (om/build side {:role view :view view :stock (-> state :stock view)})
                (if (< 0 move-index) (dom/button #js {:id "triangle-left" :aria-label "前の手" :onClick #(om/transact! app :move-index dec)}))
-               (if (< (+ 36 (* move-index 2)) (count kifu)) (dom/button #js {:id "triangle-right" :aria-label "次の手" :onClick #(om/transact! app :move-index inc)})))))))
+               (if (< move-index total-moves) (dom/button #js {:id "triangle-right" :aria-label "次の手" :onClick #(om/transact! app :move-index inc)})))))))
 
 (om/root
   container
