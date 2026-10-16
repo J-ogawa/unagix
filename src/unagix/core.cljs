@@ -9,7 +9,7 @@
 
 (enable-console-print!)
 
-; クエリ文字列は "?" + 1文字 + 棋譜 の形式で、"&view=gote" のようなパラメータを後ろに付けられる。
+; クエリ文字列は "?" + 視点 (+ / -) + 棋譜 の形式で、"&sente=名前" のようなパラメータを後ろに付けられる。
 (defonce query-parts
   (string/split (apply str (drop 1 (-> js/window .-location .-search))) #"&"))
 
@@ -19,6 +19,11 @@
 ; 手数。初期配置 36 文字の後ろは 2 文字で 1 手。末尾の余りの文字は手として扱わない
 (defonce total-moves
   (max 0 (quot (- (count kifu) 36) 2)))
+
+; 勝者。棋譜の最後の余りの 1 文字が "+" なら先手、"-" なら後手。なければ nil
+(defonce winner
+  (when (odd? (- (count kifu) 36))
+    ({"+" :+ "-" :-} (str (last kifu)))))
 
 (defonce query-params
   (into {} (for [part (rest query-parts)
@@ -35,10 +40,10 @@
   {:+ (some-> (get query-params "sente") decode-param)
    :- (some-> (get query-params "gote") decode-param)})
 
-; 視点: :+ (先手) / :- (後手)。view パラメータがなければ先手。
+; 視点: 棋譜の前の 1 文字が "-" なら後手 (:-)、それ以外は先手 (:+)
 (defonce app-state
   (atom {:move-index 0
-         :view (if (= (get query-params "view") "gote") :- :+)}))
+         :view (if (= (first (first query-parts)) "-") :- :+)}))
 
 ; --- move ---
 
@@ -150,6 +155,7 @@
           state
           (assoc-in [:field target] (keyword (str (name (:turn state)) (name stock-type))))
           (update-in [:stock (:turn state) stock-type] dec)
+          (assoc :last-move target)
           (update :turn next-turn)))
       (let [dst (get (vec (movable-masus (state :field) target)) (rem move-value 20))]
         (cond->
@@ -159,6 +165,7 @@
           true                      (assoc-in [:field dst] (-> state :field target))
           (> (quot move-value 20) 0) (update-in [:field dst] promote)
           true                      (assoc-in [:field target] nil)
+          true                      (assoc :last-move dst)
           true                      (update :turn next-turn))))))
 
 (defn- status [kifu]
@@ -187,7 +194,7 @@
   (reify
     om/IRender
     (render [self]
-      (dom/div #js {:className "masu" }
+      (dom/div #js {:className (str "masu" (when (:last-move? data) " masu-last-move"))}
                (if-let [koma (:koma data)]
                  (koma-img (apply str (drop 1 (name koma)))
                            (koma-class (keyword (subs (name koma) 0 1)) (:view data))))))))
@@ -206,7 +213,8 @@
     om/IRender
     (render [self]
       (let [view (:view app)
-            masus (map #(hash-map :koma (last %) :view view) (sort-by first (:field app)))]
+            masus (map (fn [[coord koma]] {:koma koma :view view :last-move? (= coord (:last-move app))})
+                       (sort-by first (:field app)))]
         ; 後手視点では盤を 180 度回転させるため、マスを逆順に並べる
         (apply dom/div #js {:className "ban"}
                (om/build-all masu-row (partition 6 (if (= view :-) (reverse masus) masus))))))))
@@ -254,8 +262,11 @@
     (render [self]
       (dom/div #js {:className "field"}
                (om/build player-area {:role opponent :view view :stock (-> state :stock opponent)})
-               (om/build ban {:field (:field state) :view view})
+               (om/build ban {:field (:field state) :view view :last-move (:last-move state)})
                (om/build player-area {:role view :view view :stock (-> state :stock view)})
+               (when (and winner (= move-index total-moves))
+                 (dom/div #js {:className "result"}
+                          (str (turn-marks winner) (player-names winner) "の勝利")))
                (dom/div #js {:className "nav"}
                         (dom/button #js {:id "triangle-left" :aria-label "前の手" :disabled (not (< 0 move-index))
                                          :onClick #(om/transact! app :move-index dec)})

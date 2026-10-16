@@ -50,6 +50,11 @@ html, body {
   min-height: 0;
 }
 
+/* 最後に指された手のマス */
+.masu-last-move {
+  background-color: rgba(220, 40, 30, 0.45);
+}
+
 .koma {
   width: 86%;
   height: 88%;
@@ -147,6 +152,25 @@ html, body {
   color: var(--text);
   font-size: calc(var(--u) * 28);
   text-shadow: 0 0 calc(var(--u) * 4) rgba(0, 0, 0, 0.8);
+}
+
+/* 最終手で表示する勝敗。盤の中央に重ねる */
+.result {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--u) * 570);
+  transform: translate(-50%, -50%);
+  max-width: calc(var(--u) * 520);
+  padding: calc(var(--u) * 18) calc(var(--u) * 36);
+  overflow: hidden;
+  border-radius: calc(var(--u) * 12);
+  background-color: rgba(43, 33, 16, 0.85);
+  color: var(--text);
+  font-size: calc(var(--u) * 40);
+  font-weight: bold;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 /* 手送り: 右下 */
