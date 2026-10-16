@@ -201,54 +201,48 @@
 
 (def turn-marks {:+ "☗" :- "☖"})
 
-(defn center [app owner]
+(defn ban [app owner]
   (reify
     om/IRender
     (render [self]
       (let [view (:view app)
             masus (map #(hash-map :koma (last %) :view view) (sort-by first (:field app)))]
-        (dom/div #js {:className "center"}
-                 ; 上に相手、下に自分(視点側)の手番マークと対局者名。上側は左右も反対に置く
-                 (dom/div #js {:className "bar"}
-                          (dom/div #js {:className "player player-top"}
-                                   (dom/span #js {:className "player-name"} (player-names (next-turn view)))
-                                   (dom/span #js {:className "turn-mark turn-mark-opponent"} (turn-marks (next-turn view)))))
-                 ; 後手視点では盤を 180 度回転させるため、マスを逆順に並べる
-                 (apply dom/div #js {:className "ban"}
-                        (om/build-all masu-row (partition 6 (if (= view :-) (reverse masus) masus))))
-                 (dom/div #js {:className "bar"}
-                          (dom/div #js {:className "player player-bottom"}
-                                   (dom/span #js {:className "turn-mark"} (turn-marks view))
-                                   (dom/span #js {:className "player-name"} (player-names view)))))))))
+        ; 後手視点では盤を 180 度回転させるため、マスを逆順に並べる
+        (apply dom/div #js {:className "ban"}
+               (om/build-all masu-row (partition 6 (if (= view :-) (reverse masus) masus))))))))
 
 (defn stock-koma [app owner]
   (reify
     om/IRender
     (render [self]
-      (if (> (:amount app) 0)
-        (dom/div #js {:className "stock-koma"}
-                 (koma-img (name (:koma-type app)) (koma-class (:role app) (:view app)))
-                 (when (> (:amount app) 1)
-                   (dom/span #js {:className "stock-amount"} (:amount app))))
-        (dom/div nil)))))
+      (dom/div #js {:className "stock-koma"}
+               (koma-img (name (:koma-type app)) (koma-class (:role app) (:view app)))
+               (when (> (:amount app) 1)
+                 (dom/span #js {:className "stock-amount"} (:amount app)))))))
 
 (defn komadai [player owner]
   (reify
     om/IRender
     (render [self]
-      (apply
-        dom/div #js {:className (str "komadai " (if (= (:role player) (:view player)) "komadai-bottom" "komadai-top"))}
-        (om/build-all stock-koma
-                      (seq
-                        (map #(hash-map :role (:role player) :view (:view player) :koma-type (first %) :amount (last %))
-                             (:stock player))))))))
+      (apply dom/div #js {:className "komadai"}
+             (om/build-all stock-koma
+                           (for [[koma-type amount] (:stock player)
+                                 :when (> amount 0)]
+                             {:role (:role player) :view (:view player) :koma-type koma-type :amount amount}))))))
 
-(defn side [player owner]
+; 盤の上 (相手) と下 (自分) の領域。手番マーク・対局者名と駒台を置く。
+; 上側は左右を反対にし、マークだけ上下反転する
+(defn player-area [player owner]
   (reify
     om/IRender
     (render [self]
-      (dom/div #js {:className "side"}
-               (om/build komadai player)))))
+      (let [mine? (= (:role player) (:view player))]
+        (dom/div #js {:className (str "player-area " (if mine? "player-area-bottom" "player-area-top"))}
+                 (dom/div #js {:className "player"}
+                          (dom/span #js {:className (str "turn-mark" (when-not mine? " turn-mark-opponent"))}
+                                    (turn-marks (:role player)))
+                          (dom/span #js {:className "player-name"} (player-names (:role player))))
+                 (om/build komadai player))))))
 
 (defn container [app owner]
   (let [move-index (:move-index app)
@@ -259,12 +253,15 @@
     om/IRender
     (render [self]
       (dom/div #js {:className "field"}
-               ; 左上に相手、右下に自分(視点側)の駒台
-               (om/build side {:role opponent :view view :stock (-> state :stock opponent)})
-               (om/build center {:field (:field state) :view view})
-               (om/build side {:role view :view view :stock (-> state :stock view)})
-               (if (< 0 move-index) (dom/button #js {:id "triangle-left" :aria-label "前の手" :onClick #(om/transact! app :move-index dec)}))
-               (if (< move-index total-moves) (dom/button #js {:id "triangle-right" :aria-label "次の手" :onClick #(om/transact! app :move-index inc)})))))))
+               (om/build player-area {:role opponent :view view :stock (-> state :stock opponent)})
+               (om/build ban {:field (:field state) :view view})
+               (om/build player-area {:role view :view view :stock (-> state :stock view)})
+               (dom/div #js {:className "nav"}
+                        (dom/button #js {:id "triangle-left" :aria-label "前の手" :disabled (not (< 0 move-index))
+                                         :onClick #(om/transact! app :move-index dec)})
+                        (dom/span #js {:className "move-count"} (str move-index " / " total-moves))
+                        (dom/button #js {:id "triangle-right" :aria-label "次の手" :disabled (not (< move-index total-moves))
+                                         :onClick #(om/transact! app :move-index inc)})))))))
 
 (om/root
   container

@@ -1,87 +1,38 @@
-/* 盤全体は 524 x 448 単位で設計し、1 単位 (--u) を画面に収まる最大の大きさにする */
+/* 画面全体は盤の画像 (images/board.webp, 640 x 1138) に合わせて設計する。
+   1 単位 (--u) は画像の 1px で、画面に収まる最大の大きさにする */
 :root {
-  --u: min(calc(100vw / 524), calc(100vh / 448));
+  --u: min(calc(100vw / 640), calc(100vh / 1138));
+  --text: #f6ead0;
 }
 
 html, body {
   margin: 0;
-  background-color: #fff;
+  background-color: #2b2110;
+}
+
+/* 盤を画面の上下中央に置く */
+#app {
+  display: flex;
+  align-items: center;
+  min-height: 100vh;
 }
 
 .field {
   position: relative;
-  display: flex;
-  width: calc(var(--u) * 524);
-  height: calc(var(--u) * 448);
+  width: calc(var(--u) * 640);
+  height: calc(var(--u) * 1138);
   margin: 0 auto;
-  background-color: yellowgreen;
+  background: url(../images/board.webp) center / 100% 100% no-repeat;
 }
 
-.side {
-  width: calc(var(--u) * 100);
-  height: 100%;
-}
-
-.center {
-  display: flex;
-  flex-direction: column;
-  width: calc(var(--u) * 324);
-  height: 100%;
-}
-
-.bar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: calc(var(--u) * 44);
-}
-
-.turn-mark {
-  display: inline-block;
-  font-size: calc(var(--u) * 32);
-  line-height: 1;
-}
-
-.player {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  max-width: calc(var(--u) * 260);
-}
-
-/* 下側は左端にマーク、その右に名前。上側はその反対 */
-.player-bottom {
-  left: calc(var(--u) * 8);
-}
-
-.player-top {
-  right: calc(var(--u) * 8);
-}
-
-.player-name {
-  margin: 0 calc(var(--u) * 6);
-  overflow: hidden;
-  font-size: calc(var(--u) * 20);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-/* 相手側の手番マークは盤の向こう側を向くよう上下反転する */
-.turn-mark-opponent {
-  transform: rotate(180deg);
-}
-
-
+/* 盤: 画像の罫線 (縦線 x=40..604 / 94px 間隔、横線 y=234..906 / 112px 間隔) に重ねる */
 .ban {
+  position: absolute;
+  left: calc(var(--u) * 40);
+  top: calc(var(--u) * 234);
   display: flex;
-  height: calc(var(--u) * 360);
-  box-sizing: border-box;
-  border-top: 1.5px solid #333;
-  border-left: 1.5px solid #333;
-  background-color: orange;
+  width: calc(var(--u) * 564);
+  height: calc(var(--u) * 672);
 }
 
 /* masu-row は盤の 1 列 (縦に 6 マス) */
@@ -97,13 +48,11 @@ html, body {
   justify-content: center;
   flex: 1;
   min-height: 0;
-  border-right: 1.5px solid #333;
-  border-bottom: 1.5px solid #333;
 }
 
 .koma {
-  width: 92%;
-  height: 92%;
+  width: 86%;
+  height: 88%;
   object-fit: contain;
 }
 
@@ -111,58 +60,146 @@ html, body {
   transform: rotate(180deg);
 }
 
+/* 盤の上 (相手) と下 (自分) の領域 */
+.player-area {
+  position: absolute;
+  left: calc(var(--u) * 16);
+  right: calc(var(--u) * 16);
+  display: flex;
+  justify-content: space-between;
+  box-sizing: border-box;
+  padding: calc(var(--u) * 8) 0;
+}
+
+.player-area-top {
+  top: 0;
+  height: calc(var(--u) * 185);
+  flex-direction: column;
+}
+
+.player-area-bottom {
+  top: calc(var(--u) * 955);
+  height: calc(var(--u) * 183);
+  flex-direction: column-reverse;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  max-width: calc(var(--u) * 380);
+  height: calc(var(--u) * 56);
+  color: var(--text);
+  text-shadow: 0 0 calc(var(--u) * 4) rgba(0, 0, 0, 0.8);
+}
+
+/* 下側は左端にマーク、その右に名前。上側はその反対 */
+.player-area-top .player {
+  flex-direction: row-reverse;
+  align-self: flex-end;
+}
+
+.turn-mark {
+  display: inline-block;
+  font-size: calc(var(--u) * 40);
+  line-height: 1;
+}
+
+/* 相手側の手番マークは盤の向こう側を向くよう上下反転する */
+.turn-mark-opponent {
+  transform: rotate(180deg);
+}
+
+.player-name {
+  margin: 0 calc(var(--u) * 10);
+  overflow: hidden;
+  font-size: calc(var(--u) * 30);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .komadai {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  height: 100%;
-  background-color: orange;
+  height: calc(var(--u) * 84);
 }
 
-.komadai-top {
-  justify-content: flex-start;
-}
-
-/* 自分(視点側)の駒台は下に揃える */
-.komadai-bottom {
-  justify-content: flex-end;
+.player-area-top .komadai {
+  flex-direction: row-reverse;
 }
 
 .stock-koma {
   display: flex;
   align-items: center;
-  height: calc(var(--u) * 56);
+  margin: 0 calc(var(--u) * 4);
+}
+
+.player-area-top .stock-koma {
+  flex-direction: row-reverse;
 }
 
 .stock-koma .koma {
-  width: calc(var(--u) * 48);
-  height: calc(var(--u) * 54);
+  width: calc(var(--u) * 62);
+  height: calc(var(--u) * 76);
 }
 
 .stock-amount {
-  margin-left: calc(var(--u) * 2);
-  font-size: calc(var(--u) * 20);
+  margin: 0 calc(var(--u) * 2);
+  color: var(--text);
+  font-size: calc(var(--u) * 28);
+  text-shadow: 0 0 calc(var(--u) * 4) rgba(0, 0, 0, 0.8);
+}
+
+/* 手送り: 右下 */
+.nav {
+  position: absolute;
+  right: calc(var(--u) * 20);
+  bottom: calc(var(--u) * 16);
+  display: flex;
+  align-items: center;
+  height: calc(var(--u) * 56);
 }
 
 #triangle-left,
 #triangle-right {
-  position: absolute;
-  top: calc(var(--u) * 174);
-  width: calc(var(--u) * 80);
-  height: calc(var(--u) * 100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--u) * 56);
+  height: calc(var(--u) * 56);
   padding: 0;
   border: none;
-  background-color: #fff;
-  opacity: 0.6;
+  border-radius: 50%;
+  background-color: rgba(246, 234, 208, 0.9);
   cursor: pointer;
 }
 
-#triangle-left {
-  left: calc(var(--u) * 10);
-  clip-path: polygon(100% 0, 0 50%, 100% 100%);
+#triangle-left::after,
+#triangle-right::after {
+  content: "";
+  border-top: calc(var(--u) * 12) solid transparent;
+  border-bottom: calc(var(--u) * 12) solid transparent;
 }
 
-#triangle-right {
-  right: calc(var(--u) * 10);
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
+#triangle-left::after {
+  margin-right: calc(var(--u) * 4);
+  border-right: calc(var(--u) * 18) solid #3a2a12;
+}
+
+#triangle-right::after {
+  margin-left: calc(var(--u) * 4);
+  border-left: calc(var(--u) * 18) solid #3a2a12;
+}
+
+#triangle-left:disabled,
+#triangle-right:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.move-count {
+  min-width: calc(var(--u) * 100);
+  color: var(--text);
+  font-size: calc(var(--u) * 24);
+  text-align: center;
+  text-shadow: 0 0 calc(var(--u) * 4) rgba(0, 0, 0, 0.8);
 }
