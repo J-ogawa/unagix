@@ -9,10 +9,29 @@
 
 (enable-console-print!)
 
-(defonce kifu
-  (apply str (drop 1 (-> js/window .-location .-search))))
+; クエリ文字列は "?<棋譜>&view=gote" の形式。"=" を含まない部分を棋譜として扱う。
+(defonce query-parts
+  (string/split (apply str (drop 1 (-> js/window .-location .-search))) #"&"))
 
-(defonce move-index (atom 0))
+(defonce kifu
+  (or (first (remove #(re-find #"=" %) query-parts)) ""))
+
+(defonce query-params
+  (into {} (for [part query-parts
+                 :when (re-find #"=" part)]
+             (string/split part #"=" 2))))
+
+; 視点: :+ (先手) / :- (後手)。view パラメータがなければ先手。
+(defonce app-state
+  (atom {:move-index 0
+         :view (if (= (get query-params "view") "gote") :- :+)}))
+
+(defn- sync-view-param! [view]
+  (let [params (if (= view :-)
+                 (assoc query-params "view" "gote")
+                 (dissoc query-params "view"))
+        search (string/join "&" (cons kifu (map (fn [[k v]] (str k "=" v)) params)))]
+    (.replaceState js/history nil "" (str (-> js/window .-location .-pathname) "?" search))))
 
 ; --- move ---
 
@@ -140,16 +159,23 @@
 
 ; --- virtual DOM ---
 
+; 駒種 ("hu", "nhu" など) を resources/public/images の画像パス ("/images/Hu.png", "/images/NHu.png") に変換する
+(defn- koma-image [koma-type]
+  (let [promoted? (= 3 (count koma-type))
+        base (if promoted? (subs koma-type 1) koma-type)]
+    (str "/images/" (if promoted? "N" "") (string/capitalize base) ".png")))
+
+(defn- koma-class [koma-owner view]
+  (if (= koma-owner view) "koma-up" "koma-down"))
+
 (defn masu [data owner]
   (reify
     om/IRender
     (render [self]
       (dom/div #js {:className "masu" }
-               (if (last data)
-                 (dom/img #js {:src (str "http://unagi.xyz/img/" (apply str (drop 1 (name (last data)))) ".png")
-                               :className (if (= (subs (name (last data)) 0 1) "-")
-                                            "koma-white"
-                                            "koma-black")}))))))
+               (if-let [koma (:koma data)]
+                 (dom/img #js {:src (koma-image (apply str (drop 1 (name koma))))
+                               :className (koma-class (keyword (subs (name koma) 0 1)) (:view data))}))))))
 
 (defn masu-row [app owner]
   (reify
@@ -162,10 +188,14 @@
   (reify
     om/IRender
     (render [self]
-      (dom/div #js {:className "center"}
-               (dom/div #js {:className "button"})
-               (apply dom/div #js {:className "ban"}(om/build-all masu-row (partition 6 (sort-by first app))))
-               (dom/div #js {:className "button"})))))
+      (let [masus (map #(hash-map :koma (last %) :view (:view app)) (sort-by first (:field app)))]
+        (dom/div #js {:className "center"}
+                 (dom/div #js {:className "button"})
+                 ; 後手視点では盤を 180 度回転させるため、マスを逆順に並べる
+                 (apply dom/div #js {:className "ban"}
+                        (om/build-all masu-row (partition 6 (if (= (:view app) :-) (reverse masus) masus))))
+                 (dom/div #js {:className "button"}
+                          (dom/button #js {:id "flip" :onClick (:on-flip app)} "盤面反転")))))))
 
 (defn stock-koma [app owner]
   (reify
@@ -173,8 +203,8 @@
     (render [self]
       (dom/div #js {}
                (when (> (:amount app) 0)
-                 (dom/img #js {:src (str "http://unagi.xyz/img/" (name (:koma-type app)) ".png")
-                               :className (str "koma-" (name (:role app)))
+                 (dom/img #js {:src (koma-image (name (:koma-type app)))
+                               :className (koma-class (:role app) (:view app))
                                }))
                (when (> (:amount app) 1)
                  (:amount app))))))
@@ -184,11 +214,10 @@
     om/IRender
     (render [self]
       (apply
-        dom/div #js {:className "komadai"
-                     :id (str "komadai-" (name (:role player)))}
+        dom/div #js {:className (str "komadai " (if (= (:role player) (:view player)) "komadai-bottom" "komadai-top"))}
         (om/build-all stock-koma
                       (seq
-                        (map #(hash-map :role (:role player) :koma-type (first %) :amount (last %))
+                        (map #(hash-map :role (:role player) :view (:view player) :koma-type (first %) :amount (last %))
                              (:stock player))))))))
 
 (defn side [player owner]
@@ -199,20 +228,29 @@
                (om/build komadai player)))))
 
 (defn container [app owner]
-  (let [state (status (subs kifu 0 (+ 36 (* app 2))))]
+  (let [move-index (:move-index app)
+        view (:view app)
+        opponent (next-turn view)
+        state (status (subs kifu 0 (+ 36 (* move-index 2))))]
   (reify
     om/IRender
     (render [self]
       (dom/div #js {:className "field"}
-               (om/build side {:role :white :stock (-> state :stock :-)})
-               (om/build center (:field state))
-               (om/build side {:role :black :stock (-> state :stock :+)})
-               (if (< 0 app) (dom/div #js {:id "triangle-left" :onClick #(swap! move-index dec)}))
-               (if (< (+ 36 (* app 2)) (count kifu)) (dom/div #js {:id "triangle-right" :onClick #(swap! move-index inc)})))))))
+               ; 左上に相手、右下に自分(視点側)の駒台
+               (om/build side {:role opponent :view view :stock (-> state :stock opponent)})
+               (om/build center {:field (:field state)
+                                 :view view
+                                 :on-flip (fn []
+                                            (let [new-view (next-turn view)]
+                                              (om/update! app :view new-view)
+                                              (sync-view-param! new-view)))})
+               (om/build side {:role view :view view :stock (-> state :stock view)})
+               (if (< 0 move-index) (dom/div #js {:id "triangle-left" :onClick #(om/transact! app :move-index dec)}))
+               (if (< (+ 36 (* move-index 2)) (count kifu)) (dom/div #js {:id "triangle-right" :onClick #(om/transact! app :move-index inc)})))))))
 
 (om/root
   container
-  move-index
+  app-state
   {:target (. js/document (getElementById "app"))})
 
 

@@ -99,14 +99,16 @@
   position: relative;
 }
 
-.koma-white {
+.koma-down {
   -webkit-transform: rotate(180deg);
   -moz-transform: rotate(180deg);
+  transform: rotate(180deg);
 }
 
-.koma-black {
-  -webkitTransform: rotate(0deg);
+.koma-up {
+  -webkit-transform: rotate(0deg);
   -moz-transform: rotate(0deg);
+  transform: rotate(0deg);
 }
 
 .komadai {
@@ -116,11 +118,11 @@
   position: absolute;
 }
 
-#komadai-black {
+.komadai-bottom {
   bottom: 0px;
 }
 
-#komadai-white {
+.komadai-top {
   top: 0px;
 }
 
