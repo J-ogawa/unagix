@@ -16,6 +16,17 @@
 html, body {
   margin: 0;
   background-color: #2b2110;
+  /* 拡大は不要。手送りボタンの連打でダブルタップ拡大や文字選択が起きないようにする */
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* touch-action は継承されないので、タップする要素にも直接指定する */
+.field,
+.field button {
+  touch-action: manipulation;
 }
 
 /* 盤を画面の上下中央に置く */
