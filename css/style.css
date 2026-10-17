@@ -5,6 +5,14 @@
   --text: #f6ead0;
 }
 
+/* アプリ内ブラウザ (X など) ではツールバーが画面に重なるため、
+   使える場合は実際に見えている高さ (dvh) を基準にする */
+@supports (height: 100dvh) {
+  :root {
+    --u: min(calc(100vw / 640), calc(100dvh / 1138));
+  }
+}
+
 html, body {
   margin: 0;
   background-color: #2b2110;
@@ -15,6 +23,12 @@ html, body {
   display: flex;
   align-items: center;
   min-height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  #app {
+    min-height: 100dvh;
+  }
 }
 
 .field {
@@ -128,13 +142,20 @@ html, body {
   height: calc(var(--u) * 84);
 }
 
+/* 自分側の駒台は右に手送りボタンがあるので、その手前まで */
+.player-area-bottom .komadai {
+  max-width: calc(var(--u) * 340);
+}
+
 .player-area-top .komadai {
   flex-direction: row-reverse;
 }
 
 .stock-koma {
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
+  min-width: 0;
   margin: 0 calc(var(--u) * 4);
 }
 
@@ -143,7 +164,9 @@ html, body {
 }
 
 .stock-koma .koma {
+  flex: 0 1 auto;
   width: calc(var(--u) * 62);
+  min-width: calc(var(--u) * 30);
   height: calc(var(--u) * 76);
 }
 
@@ -173,14 +196,15 @@ html, body {
   pointer-events: none;
 }
 
-/* 手送り: 右下 */
+/* 手送り: 盤のすぐ下の右側 (自分の駒台の横)。画面の下端はアプリ内ブラウザの
+   ツールバーと重なりやすいので避ける */
 .nav {
   position: absolute;
-  right: calc(var(--u) * 20);
-  bottom: calc(var(--u) * 16);
+  right: calc(var(--u) * 16);
+  top: calc(var(--u) * 963);
   display: flex;
   align-items: center;
-  height: calc(var(--u) * 56);
+  height: calc(var(--u) * 84);
 }
 
 #triangle-left,
@@ -188,8 +212,10 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calc(var(--u) * 56);
-  height: calc(var(--u) * 56);
+  /* 画面が小さくても押しやすいよう 44px 以上にする */
+  width: max(44px, calc(var(--u) * 72));
+  height: max(44px, calc(var(--u) * 72));
+  flex-shrink: 0;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -200,18 +226,18 @@ html, body {
 #triangle-left::after,
 #triangle-right::after {
   content: "";
-  border-top: calc(var(--u) * 12) solid transparent;
-  border-bottom: calc(var(--u) * 12) solid transparent;
+  border-top: calc(var(--u) * 15) solid transparent;
+  border-bottom: calc(var(--u) * 15) solid transparent;
 }
 
 #triangle-left::after {
-  margin-right: calc(var(--u) * 4);
-  border-right: calc(var(--u) * 18) solid #3a2a12;
+  margin-right: calc(var(--u) * 5);
+  border-right: calc(var(--u) * 22) solid #3a2a12;
 }
 
 #triangle-right::after {
-  margin-left: calc(var(--u) * 4);
-  border-left: calc(var(--u) * 18) solid #3a2a12;
+  margin-left: calc(var(--u) * 5);
+  border-left: calc(var(--u) * 22) solid #3a2a12;
 }
 
 #triangle-left:disabled,
@@ -221,7 +247,7 @@ html, body {
 }
 
 .move-count {
-  min-width: calc(var(--u) * 100);
+  min-width: calc(var(--u) * 96);
   color: var(--text);
   font-size: calc(var(--u) * 24);
   text-align: center;
